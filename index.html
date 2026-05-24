@@ -6,6 +6,13 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet" />
     <title>ASTRO Admin</title>
+    <script>
+      // Restore path from GitHub Pages 404 redirect
+      (function() {
+        var p = window.location.search.match(/[?&]p=([^&]+)/);
+        if (p) window.history.replaceState(null, null, decodeURIComponent(p[1]));
+      })();
+    </script>
   </head>
   <body class="bg-cosmic-950 text-white antialiased">
     <div id="root"></div>
