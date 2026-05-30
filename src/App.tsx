@@ -7,6 +7,8 @@ const DashboardPage  = lazy(() => import('./features/dashboard/pages/AdminDashbo
 const UsersPage      = lazy(() => import('./features/users/pages/UsersPage'));
 const AstrologersPage = lazy(() => import('./features/astrologers/pages/AstrologersPage'));
 const SubscriptionsPage = lazy(() => import('./features/subscriptions/pages/SubscriptionsPage'));
+const PlansPage          = lazy(() => import('./features/plans/pages/PlansPage'));
+const PromosPage         = lazy(() => import('./features/promos/pages/PromosPage'));
 const AIUsagePage        = lazy(() => import('./features/ai-usage/pages/AIUsagePage'));
 const BroadcastsPage     = lazy(() => import('./features/notifications/pages/BroadcastsPage'));
 const SettingsPage       = lazy(() => import('./features/settings/pages/AdminSettingsPage'));
@@ -35,6 +37,8 @@ export default function App() {
           <Route path="/users"        element={<UsersPage />} />
           <Route path="/astrologers"  element={<AstrologersPage />} />
           <Route path="/subscriptions" element={<SubscriptionsPage />} />
+          <Route path="/plans"         element={<PlansPage />} />
+          <Route path="/promos"        element={<PromosPage />} />
           <Route path="/ai-usage"       element={<AIUsagePage />} />
           <Route path="/notifications"  element={<BroadcastsPage />} />
           <Route path="/settings"       element={<SettingsPage />} />

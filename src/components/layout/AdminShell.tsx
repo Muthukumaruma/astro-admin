@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Star, CreditCard,
-  Sparkles, Settings, LogOut, Shield, Bell,
+  Sparkles, Settings, LogOut, Shield, Bell, Layers, Megaphone,
 } from 'lucide-react';
 import { useAdminAuthStore } from '../../stores/auth.store';
 import type { ReactNode } from 'react';
@@ -10,9 +10,11 @@ const NAV = [
   { label: 'Dashboard',     icon: LayoutDashboard, path: '/' },
   { label: 'Users',         icon: Users,           path: '/users' },
   { label: 'Astrologers',   icon: Star,            path: '/astrologers' },
+  { label: 'Plans',         icon: Layers,          path: '/plans' },
   { label: 'Subscriptions', icon: CreditCard,      path: '/subscriptions' },
   { label: 'AI Usage',       icon: Sparkles,  path: '/ai-usage' },
-  { label: 'Notifications',  icon: Bell,      path: '/notifications' },
+  { label: 'Promo Modals',   icon: Megaphone,  path: '/promos' },
+  { label: 'Notifications',  icon: Bell,       path: '/notifications' },
   { label: 'Settings',       icon: Settings,  path: '/settings' },
 ];
 

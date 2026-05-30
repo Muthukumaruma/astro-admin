@@ -1,0 +1,369 @@
+﻿import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import axios from 'axios';
+import { useAdminAuthStore } from '../../../stores/auth.store';
+
+const API = import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api/v1';
+const hdr = () => ({ Authorization: `Bearer ${useAdminAuthStore.getState().accessToken}` });
+
+type Lang      = 'en' | 'ta' | 'hi' | 'te' | 'ml' | 'kn';
+type Audience  = 'all' | 'free' | 'paid' | 'new_users';
+type Frequency = 'once' | 'daily' | 'session' | 'always';
+type CtaAction = 'navigate' | 'external_url' | 'upgrade';
+
+interface PromoContent { title: string; subtitle: string; body: string; ctaLabel: string; secondaryCtaLabel: string; }
+interface Promo {
+  _id: string;
+  content: Partial<Record<Lang, PromoContent>>;
+  imageUrl: string; backgroundColor: string; accentColor: string;
+  ctaAction: CtaAction; ctaTarget: string;
+  targetAudience: Audience; displayFrequency: Frequency;
+  priority: number; isActive: boolean;
+  startsAt?: string; endsAt?: string;
+}
+
+const LANG_LABELS: Record<Lang, string> = {
+  en: '🇬🇧 EN', ta: '🇮🇳 தமிழ்', hi: '🇮🇳 हिंदी',
+  te: '🇮🇳 తెలుగు', ml: '🇮🇳 മലയാളം', kn: '🇮🇳 ಕನ್ನಡ',
+};
+const LANGS = Object.keys(LANG_LABELS) as Lang[];
+
+const EMPTY_CONTENT: PromoContent = { title: '', subtitle: '', body: '', ctaLabel: 'Learn More', secondaryCtaLabel: 'Maybe Later' };
+const EMPTY: Omit<Promo, '_id'> = {
+  content: { en: { ...EMPTY_CONTENT } },
+  imageUrl: '', backgroundColor: '#0f0d2a', accentColor: '#6366f1',
+  ctaAction: 'navigate', ctaTarget: '',
+  targetAudience: 'all', displayFrequency: 'once', priority: 0, isActive: true,
+};
+
+const SCREENS = [
+  'Home','Charts','Porutham','Panchangam','Settings','Subscription',
+  'RasiBalan','VeeduBalan','NallaNeram',
+];
+
+const AUDIENCE_LABELS: Record<Audience, string> = {
+  all: 'All Users', free: 'Free Users Only',
+  paid: 'Paid Users Only', new_users: 'New Users (last 7 days)',
+};
+const FREQ_LABELS: Record<Frequency, string> = {
+  once: 'Once ever', daily: 'Once per day', session: 'Once per session', always: 'Always',
+};
+
+export default function PromosPage() {
+  const qc = useQueryClient();
+  const [form, setForm]     = useState<Omit<Promo, '_id'>>(EMPTY);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [open, setOpen]     = useState(false);
+  const [activeLang, setActiveLang] = useState<Lang>('en');
+
+  const { data: promos = [], isLoading } = useQuery<Promo[]>({
+    queryKey: ['admin-promos'],
+    queryFn: () => axios.get(`${API}/promos`, { headers: hdr() }).then(r => r.data.data ?? []),
+  });
+
+  const save = useMutation({
+    mutationFn: (d: Partial<Promo> & { _id?: string }) =>
+      d._id ? axios.put(`${API}/promos/${d._id}`, d, { headers: hdr() })
+            : axios.post(`${API}/promos`, d, { headers: hdr() }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-promos'] }); close(); },
+  });
+
+  const remove = useMutation({
+    mutationFn: (id: string) => axios.delete(`${API}/promos/${id}`, { headers: hdr() }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-promos'] }),
+  });
+
+  const toggle = useMutation({
+    mutationFn: (id: string) => axios.patch(`${API}/promos/${id}/toggle`, {}, { headers: hdr() }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-promos'] }),
+  });
+
+  // datetime-local input requires 'YYYY-MM-DDTHH:MM' — strip timezone/seconds from ISO string
+  function toLocalInput(iso?: string): string {
+    if (!iso) return '';
+    try { return new Date(iso).toISOString().slice(0, 16); } catch { return ''; }
+  }
+
+  function openCreate() { setEditId(null); setForm({ ...EMPTY, content: { en: { ...EMPTY_CONTENT } } }); setActiveLang('en'); setOpen(true); }
+  function openEdit(p: Promo) {
+    setEditId(p._id);
+    setForm({
+      ...p,
+      content:  p.content ?? { en: { ...EMPTY_CONTENT } },
+      startsAt: toLocalInput(p.startsAt),
+      endsAt:   toLocalInput(p.endsAt),
+    });
+    setActiveLang('en');
+    setOpen(true);
+  }
+  function close() { setOpen(false); setEditId(null); }
+  function set(k: string, v: any) { setForm(f => ({ ...f, [k]: v })); }
+  function setContent(lang: Lang, field: keyof PromoContent, val: string) {
+    setForm(f => ({
+      ...f,
+      content: {
+        ...f.content,
+        [lang]: { ...(f.content[lang] ?? EMPTY_CONTENT), [field]: val },
+      },
+    }));
+  }
+  const cur = form.content[activeLang] ?? EMPTY_CONTENT;
+  const enContent = form.content['en'] ?? EMPTY_CONTENT; // preview always uses EN fallback
+
+  return (
+    <div className="p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Promo Modals</h1>
+          <p className="text-white/40 text-sm mt-1">Animated ads shown to users based on audience targeting</p>
+        </div>
+        <button onClick={openCreate}
+          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors">
+          + New Promo
+        </button>
+      </div>
+
+      {isLoading ? <p className="text-white/40">Loading…</p> : (
+        <div className="space-y-3">
+          {promos.map(p => (
+            <div key={p._id}
+              className={`bg-white/5 border rounded-xl p-4 flex items-center gap-4 ${p.isActive ? 'border-white/10' : 'border-white/5 opacity-50'}`}>
+              {/* Colour swatch */}
+              <div className="w-12 h-12 rounded-xl flex-shrink-0 flex items-center justify-center text-lg border border-white/10"
+                style={{ backgroundColor: p.backgroundColor }}>
+                <span style={{ color: p.accentColor }}>✦</span>
+              </div>
+
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <p className="text-white font-semibold truncate">{p.content?.['en']?.title || p.content?.en?.title || '—'}</p>
+                <div className="flex items-center gap-3 mt-1 flex-wrap">
+                  <span className="text-xs text-white/40 bg-white/5 px-2 py-0.5 rounded">
+                    {AUDIENCE_LABELS[p.targetAudience]}
+                  </span>
+                  <span className="text-xs text-white/40 bg-white/5 px-2 py-0.5 rounded">
+                    {FREQ_LABELS[p.displayFrequency]}
+                  </span>
+                  <span className="text-xs text-white/40">Priority: {p.priority}</span>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button onClick={() => toggle.mutate(p._id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                    p.isActive ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                               : 'bg-white/10 text-white/50 hover:bg-white/20'}`}>
+                  {p.isActive ? 'Active' : 'Inactive'}
+                </button>
+                <button onClick={() => openEdit(p)}
+                  className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs transition-colors">
+                  Edit
+                </button>
+                <button onClick={() => remove.mutate(p._id)}
+                  className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/25 text-red-400 rounded-lg text-xs transition-colors">
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
+          {!promos.length && (
+            <div className="text-center py-16 text-white/20">No promos yet — create one to get started</div>
+          )}
+        </div>
+      )}
+
+      {/* Form Modal */}
+      {open && (
+        <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4" onClick={close}>
+          <div className="bg-gray-900 border border-white/10 rounded-2xl w-full max-w-2xl max-h-[92vh] flex gap-0 overflow-hidden" onClick={e => e.stopPropagation()}>
+
+            {/* Form */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              <h2 className="text-base font-bold text-white sticky top-0 bg-gray-900 pb-2">
+                {editId ? 'Edit Promo' : 'New Promo'}
+              </h2>
+
+              {/* Localised Content */}
+              <section className="space-y-3">
+                <p className="text-xs font-semibold text-white/40 uppercase tracking-wider">Content</p>
+
+                {/* Language tabs */}
+                <div className="flex gap-1 flex-wrap">
+                  {LANGS.map(l => {
+                    const filled = !!(form.content[l]?.title);
+                    return (
+                      <button key={l} onClick={() => setActiveLang(l)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors relative ${
+                          activeLang === l ? 'bg-indigo-600 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10'
+                        }`}>
+                        {LANG_LABELS[l]}
+                        {filled && activeLang !== l && (
+                          <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-green-400" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {activeLang !== 'en' && (
+                  <p className="text-xs text-white/30 italic">Empty fields fall back to English automatically.</p>
+                )}
+
+                <input value={cur.title} onChange={e => setContent(activeLang, 'title', e.target.value)}
+                  className="w-full bg-gray-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
+                  placeholder={activeLang === 'en' ? 'Title *' : `Title (${activeLang}) — leave blank to use EN`} />
+                <input value={cur.subtitle} onChange={e => setContent(activeLang, 'subtitle', e.target.value)}
+                  className="w-full bg-gray-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
+                  placeholder="Subtitle (shown above title)" />
+                <textarea value={cur.body} onChange={e => setContent(activeLang, 'body', e.target.value)} rows={3}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white resize-none"
+                  placeholder="Body text (optional)" />
+                <div className="grid grid-cols-2 gap-3">
+                  <input value={cur.ctaLabel} onChange={e => setContent(activeLang, 'ctaLabel', e.target.value)}
+                    className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
+                    placeholder="CTA button text" />
+                  <input value={cur.secondaryCtaLabel} onChange={e => setContent(activeLang, 'secondaryCtaLabel', e.target.value)}
+                    className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
+                    placeholder="Dismiss button text" />
+                </div>
+                <input value={form.imageUrl} onChange={e => set('imageUrl', e.target.value)}
+                  className="w-full bg-gray-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
+                  placeholder="Image URL (shared across all languages)" />
+              </section>
+
+              {/* Design */}
+              <section className="space-y-3">
+                <p className="text-xs font-semibold text-white/40 uppercase tracking-wider">Design</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: 'Background', key: 'backgroundColor' },
+                    { label: 'Accent colour', key: 'accentColor' },
+                  ].map(f => (
+                    <div key={f.key} className="flex items-center gap-2">
+                      <input type="color" value={(form as any)[f.key]} onChange={e => set(f.key, e.target.value)}
+                        className="w-9 h-9 rounded-lg cursor-pointer border-0 bg-transparent" />
+                      <span className="text-xs text-white/50">{f.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              {/* CTA */}
+              <section className="space-y-3">
+                <p className="text-xs font-semibold text-white/40 uppercase tracking-wider">CTA Action</p>
+                <select value={form.ctaAction} onChange={e => set('ctaAction', e.target.value)}
+                  className="w-full bg-gray-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white">
+                  <option value="navigate">Navigate to screen</option>
+                  <option value="external_url">Open external URL</option>
+                  <option value="upgrade">Open subscription screen</option>
+                </select>
+                {form.ctaAction === 'navigate' ? (
+                  <select value={form.ctaTarget} onChange={e => set('ctaTarget', e.target.value)}
+                    className="w-full bg-gray-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white">
+                    <option value="">Select screen…</option>
+                    {SCREENS.map(s => <option key={s} value={s} className="bg-gray-900 text-white">{s}</option>)}
+                  </select>
+                ) : form.ctaAction === 'external_url' ? (
+                  <input value={form.ctaTarget} onChange={e => set('ctaTarget', e.target.value)}
+                    className="w-full bg-gray-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
+                    placeholder="https://…" />
+                ) : null}
+              </section>
+
+              {/* Targeting */}
+              <section className="space-y-3">
+                <p className="text-xs font-semibold text-white/40 uppercase tracking-wider">Targeting</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-white/50 block mb-1">Show to</label>
+                    <select value={form.targetAudience} onChange={e => set('targetAudience', e.target.value)}
+                      className="w-full bg-gray-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white">
+                      {Object.entries(AUDIENCE_LABELS).map(([v, l]) =>
+                        <option key={v} value={v} className="bg-gray-900 text-white">{l}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-white/50 block mb-1">Frequency</label>
+                    <select value={form.displayFrequency} onChange={e => set('displayFrequency', e.target.value)}
+                      className="w-full bg-gray-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white">
+                      {Object.entries(FREQ_LABELS).map(([v, l]) =>
+                        <option key={v} value={v} className="bg-gray-900 text-white">{l}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-white/50 block mb-1">Priority (higher = first)</label>
+                    <input type="number" value={form.priority} onChange={e => set('priority', +e.target.value)}
+                      className="w-full bg-gray-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-white/50 block mb-1">Active</label>
+                    <label className="flex items-center gap-2 cursor-pointer mt-2.5 text-sm text-white/60 select-none">
+                      <input type="checkbox" checked={form.isActive} onChange={e => set('isActive', e.target.checked)}
+                        className="accent-indigo-500 w-4 h-4" />
+                      Enabled
+                    </label>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-white/50 block mb-1">Start date (optional)</label>
+                    <input type="datetime-local" value={form.startsAt ?? ''} onChange={e => set('startsAt', e.target.value || undefined)}
+                      className="w-full bg-gray-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-white [color-scheme:dark]" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-white/50 block mb-1">End date (optional)</label>
+                    <input type="datetime-local" value={form.endsAt ?? ''} onChange={e => set('endsAt', e.target.value || undefined)}
+                      className="w-full bg-gray-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-white [color-scheme:dark]" />
+                  </div>
+                </div>
+              </section>
+
+              {/* Save */}
+              <div className="flex gap-3 pt-2 sticky bottom-0 bg-gray-900 pb-1">
+                <button onClick={close}
+                  className="flex-1 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-sm transition-colors">
+                  Cancel
+                </button>
+                <button onClick={() => save.mutate(editId ? { ...form, _id: editId } : form)}
+                  disabled={save.isPending || !form.title}
+                  className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-xl text-sm font-semibold transition-colors">
+                  {save.isPending ? 'Saving…' : 'Save Promo'}
+                </button>
+              </div>
+            </div>
+
+            {/* Live preview */}
+            <div className="w-64 flex-shrink-0 border-l border-white/10 p-4 flex flex-col items-center justify-center bg-black/30">
+              <p className="text-xs text-white/30 mb-4 uppercase tracking-wider">Preview</p>
+              <div className="w-full rounded-xl overflow-hidden border border-white/10 shadow-2xl"
+                style={{ backgroundColor: form.backgroundColor }}>
+                <div className="h-1 w-full" style={{ backgroundColor: form.accentColor }} />
+                {form.imageUrl && (
+                  <img src={form.imageUrl} alt="" className="w-full h-28 object-cover" />
+                )}
+                <div className="p-4">
+                  {enContent.subtitle && (
+                    <p className="text-xs font-semibold uppercase tracking-wide mb-1"
+                      style={{ color: form.accentColor }}>{enContent.subtitle}</p>
+                  )}
+                  <p className="text-white font-bold text-sm leading-snug">{enContent.title || 'Title'}</p>
+                  {enContent.body && <p className="text-white/50 text-xs mt-1 leading-relaxed">{enContent.body}</p>}
+                </div>
+                <div className="px-4 pb-4 space-y-2">
+                  <div className="py-2.5 rounded-xl text-center text-xs font-bold text-white"
+                    style={{ backgroundColor: form.accentColor }}>
+                    {enContent.ctaLabel || 'CTA'}
+                  </div>
+                  {enContent.secondaryCtaLabel && (
+                    <p className="text-center text-xs text-white/30">{enContent.secondaryCtaLabel}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
