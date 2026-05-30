@@ -1,6 +1,6 @@
-﻿import { useState } from 'react';
+﻿import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, Plus, Send, Clock, CheckCircle, XCircle, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Bell, Plus, Send, Clock, CheckCircle, XCircle, Ban, ChevronDown, ChevronUp, Search } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import axios from 'axios';
@@ -255,7 +255,7 @@ function BroadcastRow({ item }: { item: Broadcast }) {
             onClick={e => { e.stopPropagation(); if (confirm('Cancel this broadcast?')) cancelMutation.mutate(); }}
             className="text-white/20 hover:text-red-400 transition-colors flex-shrink-0"
           >
-            <Trash2 className="w-4 h-4" />
+            <Ban className="w-4 h-4" />
           </button>
         )}
         {expanded ? <ChevronUp className="w-4 h-4 text-white/30 flex-shrink-0" /> : <ChevronDown className="w-4 h-4 text-white/30 flex-shrink-0" />}
@@ -291,6 +291,8 @@ function BroadcastRow({ item }: { item: Broadcast }) {
 
 export default function BroadcastsPage() {
   const [showCompose, setShowCompose] = useState(false);
+  const [search, setSearch]           = useState('');
+  const [statusFilter, setStatusFilter] = useState<BroadcastStatus | 'all'>('all');
 
   const { data, isLoading } = useQuery({
     queryKey: ['broadcasts'],
@@ -301,7 +303,20 @@ export default function BroadcastsPage() {
     refetchInterval: 30_000,
   });
 
-  const broadcasts = data ?? [];
+  const allBroadcasts = data ?? [];
+
+  const broadcasts = useMemo(() => {
+    let list = allBroadcasts;
+    if (statusFilter !== 'all') list = list.filter(b => b.status === statusFilter);
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(b =>
+        Object.values(b.titleLocales).some(t => t.toLowerCase().includes(q)) ||
+        Object.values(b.bodyLocales).some(t => t.toLowerCase().includes(q))
+      );
+    }
+    return list;
+  }, [allBroadcasts, search, statusFilter]);
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
@@ -336,6 +351,36 @@ export default function BroadcastsPage() {
             </div>
           );
         })}
+      </div>
+
+      {/* Search + Filter */}
+      <div className="flex gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-48">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search by title or body…"
+            className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/30"
+          />
+        </div>
+        <div className="flex gap-1 flex-wrap">
+          {(['all', 'scheduled', 'sent', 'failed', 'cancelled', 'draft'] as const).map(s => (
+            <button key={s} onClick={() => setStatusFilter(s)}
+              className={`px-3 py-2 rounded-xl text-xs font-medium transition-colors ${
+                statusFilter === s
+                  ? 'bg-red-600 text-white'
+                  : 'bg-white/5 text-white/50 hover:text-white border border-white/10'
+              }`}>
+              {s === 'all' ? 'All' : STATUS_CONFIG[s].label}
+              {s !== 'all' && (
+                <span className="ml-1 opacity-60">
+                  ({allBroadcasts.filter(b => b.status === s).length})
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* List */}
