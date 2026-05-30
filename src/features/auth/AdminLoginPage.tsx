@@ -5,13 +5,15 @@ import { toast } from 'sonner';
 import axios from 'axios';
 import { useAdminAuthStore } from '../../stores/auth.store';
 
+const API = import.meta.env.VITE_API_URL ?? 'https://api.jothisham.com/api/v1';
+
 export default function AdminLoginPage() {
   const { setToken, setUser } = useAdminAuthStore();
   const { register, handleSubmit } = useForm<{ email: string; password: string }>();
 
   const onSubmit = async (data: { email: string; password: string }) => {
     try {
-      const res = await axios.post('/api/v1/auth/login', data, { withCredentials: true });
+      const res = await axios.post(`${API}/auth/login`, data, { withCredentials: true });
       if (res.data.data.user.role !== 'admin') {
         toast.error('Admin access only');
         return;
