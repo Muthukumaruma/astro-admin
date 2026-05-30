@@ -22,9 +22,13 @@ interface Promo {
   startsAt?: string; endsAt?: string;
 }
 
-const LANG_LABELS: Record<Lang, string> = {
-  en: '🇬🇧 EN', ta: '🇮🇳 தமிழ்', hi: '🇮🇳 हिंदी',
-  te: '🇮🇳 తెలుగు', ml: '🇮🇳 മലയാളം', kn: '🇮🇳 ಕನ್ನಡ',
+const LANG_LABELS: Record<Lang, { short: string; native: string; english: string }> = {
+  en: { short: 'EN', native: 'English',   english: 'English'   },
+  ta: { short: 'TA', native: 'தமிழ்',     english: 'Tamil'     },
+  hi: { short: 'HI', native: 'हिंदी',     english: 'Hindi'     },
+  te: { short: 'TE', native: 'తెలుగు',    english: 'Telugu'    },
+  ml: { short: 'ML', native: 'മലയാളം',   english: 'Malayalam' },
+  kn: { short: 'KN', native: 'ಕನ್ನಡ',    english: 'Kannada'   },
 };
 const LANGS = Object.keys(LANG_LABELS) as Lang[];
 
@@ -197,7 +201,8 @@ export default function PromosPage() {
                         className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors relative ${
                           activeLang === l ? 'bg-indigo-600 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10'
                         }`}>
-                        {LANG_LABELS[l]}
+                        <span className="font-bold">{LANG_LABELS[l].native}</span>
+                        <span className="text-[9px] opacity-60 ml-1">{LANG_LABELS[l].english}</span>
                         {filled && activeLang !== l && (
                           <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-green-400" />
                         )}
