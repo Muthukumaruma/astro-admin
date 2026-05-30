@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, Plus, Send, Clock, CheckCircle, XCircle, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -8,7 +8,7 @@ import { useAdminAuthStore } from '../../../stores/auth.store';
 
 // ─── API ──────────────────────────────────────────────────────────────────────
 
-const API = import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api/v1';
+const API = import.meta.env.VITE_API_URL ?? 'https://api.jothisham.com/api/v1';
 
 function authHeaders() {
   const token = useAdminAuthStore.getState().accessToken;

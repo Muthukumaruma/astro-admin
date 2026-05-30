@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { useAdminAuthStore } from '../../../stores/auth.store';
 
-const API = import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api/v1';
+const API = import.meta.env.VITE_API_URL ?? 'https://api.jothisham.com/api/v1';
 function authHeaders() {
   const token = useAdminAuthStore.getState().accessToken;
   return { Authorization: `Bearer ${token}` };
