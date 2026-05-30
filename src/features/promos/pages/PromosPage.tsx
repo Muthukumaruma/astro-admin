@@ -175,8 +175,8 @@ export default function PromosPage() {
 
       {/* Form Modal */}
       {open && (
-        <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4" onClick={close}>
-          <div className="bg-gray-900 border border-white/10 rounded-2xl w-full max-w-2xl max-h-[92vh] flex gap-0 overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 border border-white/10 rounded-2xl w-full max-w-2xl max-h-[92vh] flex gap-0 overflow-hidden">
 
             {/* Form */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -211,8 +211,13 @@ export default function PromosPage() {
                 )}
 
                 <input value={cur.title} onChange={e => setContent(activeLang, 'title', e.target.value)}
-                  className="w-full bg-gray-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
-                  placeholder={activeLang === 'en' ? 'Title *' : `Title (${activeLang}) — leave blank to use EN`} />
+                  className={`w-full bg-gray-900 border rounded-lg px-3 py-2 text-sm text-white ${
+                    activeLang === 'en' && !cur.title.trim() ? 'border-red-500/60' : 'border-white/10'
+                  }`}
+                  placeholder={activeLang === 'en' ? 'Title * (required)' : `Title (${activeLang}) — leave blank to use EN`} />
+                {activeLang === 'en' && !cur.title.trim() && (
+                  <p className="text-red-400 text-xs -mt-1">English title is required to save</p>
+                )}
                 <input value={cur.subtitle} onChange={e => setContent(activeLang, 'subtitle', e.target.value)}
                   className="w-full bg-gray-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
                   placeholder="Subtitle (shown above title)" />
@@ -326,7 +331,7 @@ export default function PromosPage() {
                   Cancel
                 </button>
                 <button onClick={() => save.mutate(editId ? { ...form, _id: editId } : form)}
-                  disabled={save.isPending || !form.title}
+                  disabled={save.isPending || !form.content?.en?.title?.trim()}
                   className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-xl text-sm font-semibold transition-colors">
                   {save.isPending ? 'Saving…' : 'Save Promo'}
                 </button>
