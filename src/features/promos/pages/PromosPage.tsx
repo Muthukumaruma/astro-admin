@@ -12,6 +12,7 @@ type Frequency = 'once' | 'daily' | 'session' | 'always';
 type CtaAction = 'navigate' | 'external_url' | 'upgrade';
 
 interface PromoContent { title: string; subtitle: string; body: string; ctaLabel: string; secondaryCtaLabel: string; }
+interface PromoStats { impressions: number; ctaClicks: number; dismissals: number; }
 interface Promo {
   _id: string;
   content: Partial<Record<Lang, PromoContent>>;
@@ -20,6 +21,7 @@ interface Promo {
   targetAudience: Audience; displayFrequency: Frequency;
   priority: number; isActive: boolean;
   startsAt?: string; endsAt?: string;
+  stats?: PromoStats;
 }
 
 const LANG_LABELS: Record<Lang, { short: string; native: string; english: string }> = {
@@ -150,6 +152,32 @@ export default function PromosPage() {
                   </span>
                   <span className="text-xs text-white/40">Priority: {p.priority}</span>
                 </div>
+
+                {/* Impression stats */}
+                {p.stats && (
+                  <div className="flex gap-4 mt-2 pt-2 border-t border-white/5">
+                    <div className="text-center">
+                      <p className="text-white font-bold text-sm">{p.stats.impressions.toLocaleString()}</p>
+                      <p className="text-white/30 text-[10px]">👁 Impressions</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-green-400 font-bold text-sm">{p.stats.ctaClicks.toLocaleString()}</p>
+                      <p className="text-white/30 text-[10px]">👆 Clicks</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-white/50 font-bold text-sm">{p.stats.dismissals.toLocaleString()}</p>
+                      <p className="text-white/30 text-[10px]">✕ Dismissed</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-indigo-400 font-bold text-sm">
+                        {p.stats.impressions > 0
+                          ? `${((p.stats.ctaClicks / p.stats.impressions) * 100).toFixed(1)}%`
+                          : '—'}
+                      </p>
+                      <p className="text-white/30 text-[10px]">📊 CTR</p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Actions */}
