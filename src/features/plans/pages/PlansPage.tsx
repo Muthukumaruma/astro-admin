@@ -1,5 +1,6 @@
 ﻿import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import axios from 'axios';
 import { useAdminAuthStore } from '../../../stores/auth.store';
 
@@ -56,10 +57,42 @@ export default function PlansPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
 
+  const [orderedPlans, setOrderedPlans] = useState<Plan[]>([]);
+
   const { data: plans = [], isLoading } = useQuery<Plan[]>({
     queryKey: ['admin-plans'],
-    queryFn: () => axios.get(`${API}/plans`, { headers: authHeaders() }).then(r => r.data.data ?? []),
+    queryFn: () => axios.get(`${API}/plans`, { headers: authHeaders() })
+      .then(r => (r.data.data ?? []).sort((a: Plan, b: Plan) => a.sortOrder - b.sortOrder)),
+    onSuccess: (data) => setOrderedPlans(data),
   });
+
+  // Use local ordered list if populated, fallback to server data
+  const displayPlans = orderedPlans.length ? orderedPlans : plans;
+
+  const reorderMutation = useMutation({
+    mutationFn: async (items: Plan[]) => {
+      await Promise.all(
+        items.map((p, i) =>
+          axios.put(`${API}/plans/${p._id}`, { ...p, sortOrder: i }, { headers: authHeaders() })
+        )
+      );
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-plans'] }),
+  });
+
+  function onDragEnd(result: DropResult) {
+    if (!result.destination) return;
+    const src = result.source.index;
+    const dst = result.destination.index;
+    if (src === dst) return;
+
+    const reordered = [...displayPlans];
+    const [moved] = reordered.splice(src, 1);
+    reordered.splice(dst, 0, moved);
+    const withOrder = reordered.map((p, i) => ({ ...p, sortOrder: i }));
+    setOrderedPlans(withOrder);
+    reorderMutation.mutate(withOrder);
+  }
 
   const save = useMutation({
     mutationFn: (data: Partial<Plan> & { _id?: string }) =>
@@ -97,17 +130,43 @@ export default function PlansPage() {
       </div>
 
       {/* Plan cards */}
+      {reorderMutation.isPending && (
+        <p className="text-white/40 text-sm">Saving order…</p>
+      )}
+
       {isLoading ? (
         <p className="text-white/40">Loading…</p>
       ) : (
-        <div className="grid gap-5 md:grid-cols-3">
-          {plans.map(plan => (
+        <DragDropContext onDragEnd={onDragEnd}>
+          <Droppable droppableId="plans" direction="horizontal">
+            {(provided) => (
+          <div className="grid gap-5 md:grid-cols-3" ref={provided.innerRef} {...provided.droppableProps}>
+          {displayPlans.map((plan, index) => (
+            <Draggable key={plan._id} draggableId={plan._id} index={index}>
+              {(drag, snapshot) => (
+              <div ref={drag.innerRef} {...drag.draggableProps}
+                style={{ ...drag.draggableProps.style, opacity: snapshot.isDragging ? 0.85 : 1 }}
+              >
             <div key={plan._id}
-              className={`bg-white/5 border rounded-2xl p-5 space-y-4 ${plan.isActive ? 'border-white/10' : 'border-red-500/20 opacity-50'}`}>
+              className={`relative bg-white/5 border rounded-2xl p-5 space-y-4 ${
+                plan.slug === 'pro' ? 'border-indigo-500/50 ring-1 ring-indigo-500/20' :
+                plan.isActive ? 'border-white/10' : 'border-red-500/20 opacity-50'
+              }`}>
+              {/* Most Popular badge */}
+              {plan.slug === 'pro' && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <span className="bg-indigo-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider whitespace-nowrap">
+                    ⭐ Most Popular
+                  </span>
+                </div>
+              )}
               {/* Plan header */}
-              <div className="flex items-start justify-between">
+              <div className="flex items-start justify-between mt-2">
                 <div>
-                  <span className="text-[10px] font-mono text-indigo-400 uppercase tracking-widest">{plan.slug}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono text-indigo-400 uppercase tracking-widest">{plan.slug}</span>
+                    <span className="text-[10px] text-white/20">#{plan.sortOrder}</span>
+                  </div>
                   <h3 className="text-lg font-bold text-white leading-tight">{plan.name}</h3>
                   <p className="text-xs text-white/40 mt-0.5">{plan.description}</p>
                 </div>
@@ -134,7 +193,13 @@ export default function PlansPage() {
               </div>
 
               {/* Actions */}
-              <div className="flex gap-2 pt-1">
+              <div className="flex gap-2 pt-1 items-center">
+                {/* Drag handle */}
+                <div {...drag.dragHandleProps}
+                  className="px-2 py-1.5 text-white/20 hover:text-white/60 cursor-grab active:cursor-grabbing transition-colors text-lg select-none"
+                  title="Drag to reorder">
+                  ⠿
+                </div>
                 <button onClick={() => openEdit(plan)}
                   className="flex-1 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs transition-colors">
                   Edit Limits
@@ -147,15 +212,21 @@ export default function PlansPage() {
                 )}
               </div>
             </div>
+            </div>
+            )}
+            </Draggable>
           ))}
+          {provided.placeholder}
         </div>
+        )}
+          </Droppable>
+        </DragDropContext>
       )}
 
       {/* Form modal */}
       {open && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={closeForm}>
-          <div className="bg-gray-900 border border-white/10 rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"
-            onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 border border-white/10 rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-gray-900 border-b border-white/10 px-6 py-4">
               <h2 className="text-base font-bold text-white">{editId ? 'Edit Plan' : 'New Plan'}</h2>
             </div>
@@ -192,8 +263,14 @@ export default function PlansPage() {
                     onChange={e => setForm(f => ({ ...f, price: +e.target.value }))}
                     className="w-full bg-gray-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white" />
                 </div>
-                <div className="flex items-center gap-2 pt-5">
-                  <label className="flex items-center gap-2 cursor-pointer text-sm text-white/60 select-none">
+                <div className="space-y-2">
+                  <div>
+                    <label className="text-xs text-white/50 block mb-1">Sort Order</label>
+                    <input type="number" value={form.sortOrder}
+                      onChange={e => setForm(f => ({ ...f, sortOrder: +e.target.value }))}
+                      className="w-full bg-gray-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white" />
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer text-sm text-white/60 select-none pt-1">
                     <input type="checkbox" checked={form.isFree}
                       onChange={e => setForm(f => ({ ...f, isFree: e.target.checked }))}
                       className="accent-indigo-500 w-4 h-4" />
