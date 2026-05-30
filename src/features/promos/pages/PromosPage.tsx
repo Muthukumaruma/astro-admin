@@ -157,21 +157,21 @@ export default function PromosPage() {
                 {p.stats && (
                   <div className="flex gap-4 mt-2 pt-2 border-t border-white/5">
                     <div className="text-center">
-                      <p className="text-white font-bold text-sm">{p.stats.impressions.toLocaleString()}</p>
+                      <p className="text-white font-bold text-sm">{(p.stats?.impressions ?? 0).toLocaleString()}</p>
                       <p className="text-white/30 text-[10px]">👁 Impressions</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-green-400 font-bold text-sm">{p.stats.ctaClicks.toLocaleString()}</p>
+                      <p className="text-green-400 font-bold text-sm">{(p.stats?.ctaClicks ?? 0).toLocaleString()}</p>
                       <p className="text-white/30 text-[10px]">👆 Clicks</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-white/50 font-bold text-sm">{p.stats.dismissals.toLocaleString()}</p>
+                      <p className="text-white/50 font-bold text-sm">{(p.stats?.dismissals ?? 0).toLocaleString()}</p>
                       <p className="text-white/30 text-[10px]">✕ Dismissed</p>
                     </div>
                     <div className="text-center">
                       <p className="text-indigo-400 font-bold text-sm">
-                        {p.stats.impressions > 0
-                          ? `${((p.stats.ctaClicks / p.stats.impressions) * 100).toFixed(1)}%`
+                        {(p.stats?.impressions ?? 0) > 0
+                          ? `${(((p.stats?.ctaClicks ?? 0) / (p.stats?.impressions ?? 1)) * 100).toFixed(1)}%`
                           : '—'}
                       </p>
                       <p className="text-white/30 text-[10px]">📊 CTR</p>
