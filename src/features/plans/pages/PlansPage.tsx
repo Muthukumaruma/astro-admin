@@ -160,7 +160,8 @@ export default function PlansPage() {
   });
 
   function openCreate() { setEditId(null); setForm({ ...EMPTY, limits: { ...DEFAULT_LIMITS } }); setOpen(true); }
-  function openEdit(p: Plan) { setEditId(p._id); setForm({ ...p }); setOpen(true); }
+  // Merge DEFAULT_LIMITS so any missing fields (new boolean flags on old DB docs) have a safe default
+  function openEdit(p: Plan) { setEditId(p._id); setForm({ ...p, limits: { ...DEFAULT_LIMITS, ...p.limits } }); setOpen(true); }
   function closeForm() { setOpen(false); setEditId(null); }
 
   function setLimitField(key: keyof PlanLimits, val: string | boolean) {
@@ -356,25 +357,21 @@ export default function PlansPage() {
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
-                  {PAGE_ACCESS_FIELDS.map(({ key, label }) => (
-                    <label key={key} className="flex items-center justify-between cursor-pointer group">
-                      <span className="text-sm text-white/70 group-hover:text-white transition-colors">{label}</span>
-                      <div className="relative">
-                        <input type="checkbox"
-                          checked={form.limits[key] as boolean}
-                          onChange={e => setLimitField(key, e.target.checked)}
-                          className="sr-only" />
-                        <div onClick={() => setLimitField(key, !(form.limits[key] as boolean))}
-                          className={`w-10 h-5 rounded-full cursor-pointer transition-colors ${
-                            form.limits[key] ? 'bg-indigo-500' : 'bg-white/10'
-                          } relative`}>
-                          <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
-                            form.limits[key] ? 'translate-x-5' : 'translate-x-0.5'
-                          }`} />
+                  {PAGE_ACCESS_FIELDS.map(({ key, label }) => {
+                    const on = !!form.limits[key];
+                    return (
+                      <div
+                        key={key}
+                        className="flex items-center justify-between cursor-pointer group select-none"
+                        onClick={() => setLimitField(key, !on)}
+                      >
+                        <span className="text-sm text-white/70 group-hover:text-white transition-colors">{label}</span>
+                        <div className={`w-10 h-5 rounded-full transition-colors flex-shrink-0 relative ${on ? 'bg-indigo-500' : 'bg-white/10'}`}>
+                          <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${on ? 'translate-x-5' : 'translate-x-0.5'}`} />
                         </div>
                       </div>
-                    </label>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
