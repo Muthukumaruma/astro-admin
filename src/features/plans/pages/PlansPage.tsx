@@ -193,30 +193,40 @@ export default function PlansPage() {
   }
 
   const [saveError, setSaveError] = useState('');
+  const [saveVerify, setSaveVerify] = useState('');
 
   const save = useMutation({
     mutationFn: async (data: Partial<Plan> & { _id?: string }) => {
       const { _id, limits, ...basicInfo } = data;
       setSaveError('');
+      setSaveVerify('');
 
       if (_id) {
-        // 1. Update basic info + applyMode (PUT handles push-to-all on backend)
+        // 1. Update basic info
         await axios.put(
           `${API}/plans/${_id}`,
           { ...basicInfo, applyMode },
           { headers: authHeaders() },
         );
-        // 2. Update limits — pass applyMode so backend can push to all subscribers
-        await axios.patch(
+        // 2. Update limits
+        const patchRes = await axios.patch(
           `${API}/plans/${_id}/limits`,
           { ...limits, applyMode },
           { headers: authHeaders() },
         );
+        // 3. Verify — show what DB actually saved
+        const savedPlan = patchRes.data?.data?.plan ?? patchRes.data?.data;
+        if (savedPlan?.limits) {
+          const l = savedPlan.limits;
+          setSaveVerify(
+            `✓ DB saved: jathagam=${l.accessJathagam} | porutham=${l.accessPorutham} | panchangam=${l.accessPanchangam}`
+          );
+        }
       } else {
         await axios.post(`${API}/plans`, { ...basicInfo, limits }, { headers: authHeaders() });
       }
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-plans'] }); closeForm(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-plans'] }); },
     onError: (err: any) => {
       const msg = err?.response?.data?.error ?? err?.message ?? 'Unknown error';
       setSaveError(msg);
@@ -539,10 +549,15 @@ export default function PlansPage() {
                 </div>
               )}
 
-              {/* Error message */}
               {saveError && (
                 <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-sm text-red-400">
                   ⚠️ Save failed: {saveError}
+                </div>
+              )}
+              {saveVerify && (
+                <div className="bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 text-sm text-green-400 flex items-center justify-between">
+                  <span>{saveVerify}</span>
+                  <button onClick={closeForm} className="ml-4 text-white/60 hover:text-white text-xs underline">Close</button>
                 </div>
               )}
 
