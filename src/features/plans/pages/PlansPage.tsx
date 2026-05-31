@@ -106,11 +106,14 @@ function CountChip({ v }: { v: number }) {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
+type ApplyMode = 'new_only' | 'all';
+
 export default function PlansPage() {
   const qc = useQueryClient();
   const [form, setForm] = useState<Omit<Plan, '_id'>>(EMPTY);
   const [editId, setEditId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const [applyMode, setApplyMode] = useState<ApplyMode>('new_only');
   const [orderedPlans, setOrderedPlans] = useState<Plan[]>([]);
 
   const { data: plans = [], isLoading } = useQuery<Plan[]>({
@@ -149,7 +152,7 @@ export default function PlansPage() {
   const save = useMutation({
     mutationFn: (data: Partial<Plan> & { _id?: string }) =>
       data._id
-        ? axios.put(`${API}/plans/${data._id}`, data, { headers: authHeaders() })
+        ? axios.put(`${API}/plans/${data._id}`, { ...data, applyMode }, { headers: authHeaders() })
         : axios.post(`${API}/plans`, data, { headers: authHeaders() }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-plans'] }); closeForm(); },
   });
@@ -159,9 +162,8 @@ export default function PlansPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-plans'] }),
   });
 
-  function openCreate() { setEditId(null); setForm({ ...EMPTY, limits: { ...DEFAULT_LIMITS } }); setOpen(true); }
-  // Merge DEFAULT_LIMITS so any missing fields (new boolean flags on old DB docs) have a safe default
-  function openEdit(p: Plan) { setEditId(p._id); setForm({ ...p, limits: { ...DEFAULT_LIMITS, ...p.limits } }); setOpen(true); }
+  function openCreate() { setEditId(null); setForm({ ...EMPTY, limits: { ...DEFAULT_LIMITS } }); setApplyMode('new_only'); setOpen(true); }
+  function openEdit(p: Plan) { setEditId(p._id); setForm({ ...p, limits: { ...DEFAULT_LIMITS, ...p.limits } }); setApplyMode('new_only'); setOpen(true); }
   function closeForm() { setOpen(false); setEditId(null); }
 
   function setLimitField(key: keyof PlanLimits, val: string | boolean) {
@@ -397,6 +399,49 @@ export default function PlansPage() {
                 </div>
               </div>
 
+              {/* ── Apply Mode (only shown when editing existing plan) ── */}
+              {editId && (
+                <div className="border border-white/10 rounded-xl p-4 space-y-2.5">
+                  <p className="text-xs font-semibold text-white/60 uppercase tracking-wider">Who gets these changes?</p>
+                  <div className="space-y-2">
+                    {([
+                      {
+                        value: 'new_only',
+                        label: 'New subscribers only',
+                        desc: 'Existing paid subscribers keep their current limits until their next billing cycle.',
+                        icon: '🔒',
+                        color: 'border-indigo-500/50 bg-indigo-500/5',
+                      },
+                      {
+                        value: 'all',
+                        label: 'Apply to everyone now',
+                        desc: 'All active subscribers on this plan get the new limits immediately.',
+                        icon: '⚡',
+                        color: 'border-amber-500/50 bg-amber-500/5',
+                      },
+                    ] as { value: ApplyMode; label: string; desc: string; icon: string; color: string }[]).map(opt => (
+                      <div
+                        key={opt.value}
+                        onClick={() => setApplyMode(opt.value)}
+                        className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                          applyMode === opt.value ? opt.color : 'border-white/5 hover:border-white/15'
+                        }`}
+                      >
+                        <div className={`mt-0.5 w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+                          applyMode === opt.value ? 'border-indigo-400' : 'border-white/20'
+                        }`}>
+                          {applyMode === opt.value && <div className="w-2 h-2 rounded-full bg-indigo-400" />}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-white">{opt.icon} {opt.label}</p>
+                          <p className="text-xs text-white/40 mt-0.5">{opt.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Save / Cancel */}
               <div className="flex gap-3 pt-2">
                 <button onClick={closeForm}
@@ -405,8 +450,12 @@ export default function PlansPage() {
                 </button>
                 <button onClick={() => save.mutate(editId ? { ...form, _id: editId } : form)}
                   disabled={save.isPending || !form.slug || !form.name}
-                  className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-xl text-sm font-semibold transition-colors">
-                  {save.isPending ? 'Saving…' : 'Save Plan'}
+                  className={`flex-1 py-2.5 disabled:opacity-40 text-white rounded-xl text-sm font-semibold transition-colors ${
+                    applyMode === 'all'
+                      ? 'bg-amber-600 hover:bg-amber-700'
+                      : 'bg-indigo-600 hover:bg-indigo-700'
+                  }`}>
+                  {save.isPending ? 'Saving…' : applyMode === 'all' ? '⚡ Save & Apply Now' : '🔒 Save Plan'}
                 </button>
               </div>
             </div>
