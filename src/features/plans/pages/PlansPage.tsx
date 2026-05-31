@@ -192,14 +192,43 @@ export default function PlansPage() {
     reorderMutation.mutate(withOrder);
   }
 
+  const [saveError, setSaveError] = useState('');
+
   const save = useMutation({
-    mutationFn: (data: Partial<Plan> & { _id?: string }) => {
-      const { _id, ...body } = data;
-      return _id
-        ? axios.put(`${API}/plans/${_id}`, { ...body, applyMode }, { headers: authHeaders() })
-        : axios.post(`${API}/plans`, body, { headers: authHeaders() });
+    mutationFn: async (data: Partial<Plan> & { _id?: string }) => {
+      const { _id, limits, ...basicInfo } = data;
+      setSaveError('');
+
+      if (_id) {
+        // 1. Update basic info — no _id, no limits subdocument
+        await axios.put(
+          `${API}/plans/${_id}`,
+          { ...basicInfo, applyMode },
+          { headers: authHeaders() },
+        );
+        // 2. Update limits via dedicated endpoint (always worked)
+        await axios.patch(
+          `${API}/plans/${_id}/limits`,
+          limits,
+          { headers: authHeaders() },
+        );
+        // 3. If "apply all", push to existing subscribers
+        if (applyMode === 'all') {
+          await axios.post(
+            `${API}/plans/${_id}/push-limits`,
+            {},
+            { headers: authHeaders() },
+          );
+        }
+      } else {
+        await axios.post(`${API}/plans`, { ...basicInfo, limits }, { headers: authHeaders() });
+      }
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-plans'] }); closeForm(); },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.error ?? err?.message ?? 'Unknown error';
+      setSaveError(msg);
+    },
   });
 
   const deactivate = useMutation({
@@ -207,8 +236,8 @@ export default function PlansPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-plans'] }),
   });
 
-  function openCreate() { setEditId(null); setForm({ ...EMPTY, limits: { ...DEFAULT_LIMITS } }); setApplyMode('new_only'); setOpen(true); }
-  function openEdit(p: Plan) { setEditId(p._id); setForm({ ...p, limits: { ...DEFAULT_LIMITS, ...p.limits } }); setApplyMode('new_only'); setOpen(true); }
+  function openCreate() { setEditId(null); setForm({ ...EMPTY, limits: { ...DEFAULT_LIMITS } }); setApplyMode('new_only'); setSaveError(''); setOpen(true); }
+  function openEdit(p: Plan) { setEditId(p._id); setForm({ ...p, limits: { ...DEFAULT_LIMITS, ...p.limits } }); setApplyMode('new_only'); setSaveError(''); setOpen(true); }
   function closeForm() { setOpen(false); setEditId(null); }
 
   function setLimitField(key: keyof PlanLimits, val: string | boolean) {
@@ -515,6 +544,13 @@ export default function PlansPage() {
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Error message */}
+              {saveError && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-sm text-red-400">
+                  ⚠️ Save failed: {saveError}
                 </div>
               )}
 
