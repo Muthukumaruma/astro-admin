@@ -405,36 +405,36 @@ export default function PlansPage() {
                 </div>
 
                 {ACCESS_SECTIONS.map(section => (
-                  <div key={section.title} className="border border-white/8 rounded-xl overflow-hidden">
+                  <div key={section.title} className="border border-white/10 rounded-xl overflow-hidden">
                     {/* Section header */}
-                    <div className="flex items-center justify-between px-3 py-2 bg-white/5">
-                      <span className="text-xs font-semibold text-white/70">{section.icon} {section.title}</span>
-                      <div className="flex gap-1.5">
+                    <div className="flex items-center justify-between px-3 py-2 bg-white/[0.06]">
+                      <span className="text-xs font-semibold text-white/80">{section.icon} {section.title}</span>
+                      <div className="flex gap-2">
                         <button
-                          onClick={() => section.fields.forEach(f => setLimitField(f.key, true))}
-                          className="text-[10px] text-green-400/70 hover:text-green-400 px-1.5 py-0.5 rounded transition-colors">
+                          onClick={(e) => { e.stopPropagation(); section.fields.forEach(f => setLimitField(f.key, true)); }}
+                          className="text-[11px] font-medium text-green-400 bg-green-400/10 hover:bg-green-400/20 px-2 py-0.5 rounded transition-colors">
                           All on
                         </button>
                         <button
-                          onClick={() => section.fields.forEach(f => setLimitField(f.key, false))}
-                          className="text-[10px] text-red-400/70 hover:text-red-400 px-1.5 py-0.5 rounded transition-colors">
+                          onClick={(e) => { e.stopPropagation(); section.fields.forEach(f => setLimitField(f.key, false)); }}
+                          className="text-[11px] font-medium text-red-400 bg-red-400/10 hover:bg-red-400/20 px-2 py-0.5 rounded transition-colors">
                           All off
                         </button>
                       </div>
                     </div>
                     {/* Section fields */}
-                    <div className="divide-y divide-white/5">
+                    <div className="divide-y divide-white/[0.06]">
                       {section.fields.map(({ key, label }) => {
                         const on = !!form.limits[key];
                         return (
                           <div
                             key={key}
-                            className="flex items-center justify-between px-3 py-2.5 cursor-pointer hover:bg-white/3 select-none group"
+                            className="flex items-center justify-between px-3 py-3 cursor-pointer hover:bg-white/5 select-none group"
                             onClick={() => setLimitField(key, !on)}
                           >
-                            <span className="text-sm text-white/65 group-hover:text-white/90 transition-colors">{label}</span>
-                            <div className={`w-9 h-5 rounded-full transition-colors flex-shrink-0 relative ${on ? 'bg-indigo-500' : 'bg-white/10'}`}>
-                              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${on ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                            <span className="text-sm text-white/70 group-hover:text-white transition-colors">{label}</span>
+                            <div className={`w-10 h-[22px] rounded-full transition-all duration-200 flex-shrink-0 relative border ${on ? 'bg-indigo-500 border-indigo-400' : 'bg-white/15 border-white/20'}`}>
+                              <div className={`absolute top-[3px] w-4 h-4 rounded-full shadow-sm transition-transform duration-200 ${on ? 'translate-x-5 bg-white' : 'translate-x-[3px] bg-white/80'}`} />
                             </div>
                           </div>
                         );
