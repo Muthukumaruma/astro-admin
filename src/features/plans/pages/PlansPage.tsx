@@ -11,28 +11,22 @@ function authHeaders() {
 }
 
 interface PlanLimits {
-  // Page access
-  accessJathagam: boolean;
-  accessPorutham: boolean;
-  accessAdvancedMatching: boolean;
-  accessPanchangam: boolean;
-  accessNallaNeram: boolean;
-  accessMuhurtam: boolean;
-  accessRasiBalan: boolean;
-  accessVeeduBalan: boolean;
-  accessGocharaChart: boolean;
-  accessPdfDownload: boolean;
-  accessReminders: boolean;
-  accessAiFeatures: boolean;
+  // Jathagam
+  accessJathagam: boolean; accessJathagamCreate: boolean;
+  accessJathagamDetail: boolean; accessKocharamCompare: boolean;
+  // Porutham
+  accessPorutham: boolean; accessAdvancedMatching: boolean;
+  // Panchangam
+  accessPanchangam: boolean; accessPanchangamCalendar: boolean;
+  accessMuhurtam: boolean; accessGocharaChart: boolean;
+  // Home
+  accessNallaNeram: boolean; accessRasiBalan: boolean; accessVeeduBalan: boolean;
+  // Other
+  accessPdfDownload: boolean; accessReminders: boolean; accessAiFeatures: boolean;
   // Counts
-  jathagamCount: number;
-  basicPoruthamCount: number;
-  advancedPoruthamCount: number;
-  muhurtamSearchCount: number;
-  rasiBalanSearchCount: number;
-  reminderCount: number;
-  pdfDownloadCount: number;
-  aiTokensCount: number;
+  jathagamCount: number; basicPoruthamCount: number; advancedPoruthamCount: number;
+  muhurtamSearchCount: number; rasiBalanSearchCount: number;
+  reminderCount: number; pdfDownloadCount: number; aiTokensCount: number;
   advancedMatching: boolean;
 }
 
@@ -45,21 +39,59 @@ interface Plan {
 // ─── Field definitions ────────────────────────────────────────────────────────
 
 type FieldDef = { key: keyof PlanLimits; label: string; bool: boolean; hint?: string };
+type Section  = { title: string; icon: string; fields: FieldDef[] };
 
-const PAGE_ACCESS_FIELDS: FieldDef[] = [
-  { key: 'accessJathagam',        label: 'Jathagam (Horoscope)',     bool: true },
-  { key: 'accessPorutham',        label: 'Porutham (Basic Matching)', bool: true },
-  { key: 'accessAdvancedMatching',label: 'Advanced Matching',         bool: true },
-  { key: 'accessMuhurtam',        label: 'Muhurtam Search',           bool: true },
-  { key: 'accessRasiBalan',       label: 'Rasi Balan',                bool: true },
-  { key: 'accessVeeduBalan',      label: 'Veedu Balan',               bool: true },
-  { key: 'accessPanchangam',      label: 'Panchangam',                bool: true },
-  { key: 'accessNallaNeram',      label: 'Nalla Neram / Horai',       bool: true },
-  { key: 'accessGocharaChart',    label: 'Gochara (Transit) Chart',   bool: true },
-  { key: 'accessPdfDownload',     label: 'PDF Export',                bool: true },
-  { key: 'accessReminders',       label: 'Reminders',                 bool: true },
-  { key: 'accessAiFeatures',      label: 'AI Features',               bool: true },
+const ACCESS_SECTIONS: Section[] = [
+  {
+    title: 'Jathagam (Horoscope)',
+    icon: '🌟',
+    fields: [
+      { key: 'accessJathagam',       label: 'List screen',           bool: true },
+      { key: 'accessJathagamCreate', label: 'Create new chart',      bool: true },
+      { key: 'accessJathagamDetail', label: 'View full detail',      bool: true },
+      { key: 'accessKocharamCompare',label: 'Kocharam compare',      bool: true },
+    ],
+  },
+  {
+    title: 'Porutham (Matching)',
+    icon: '💑',
+    fields: [
+      { key: 'accessPorutham',        label: 'Basic porutham tab',   bool: true },
+      { key: 'accessAdvancedMatching',label: 'Advanced matching',    bool: true },
+    ],
+  },
+  {
+    title: 'Panchangam',
+    icon: '📅',
+    fields: [
+      { key: 'accessPanchangam',        label: 'Main screen',        bool: true },
+      { key: 'accessPanchangamCalendar',label: 'Calendar screen',    bool: true },
+      { key: 'accessMuhurtam',          label: 'Muhurtam',           bool: true },
+      { key: 'accessGocharaChart',      label: 'Gochara chart',      bool: true },
+    ],
+  },
+  {
+    title: 'Home Features',
+    icon: '🏠',
+    fields: [
+      { key: 'accessNallaNeram', label: 'Nalla Neram / Horai', bool: true },
+      { key: 'accessRasiBalan',  label: 'Rasi Balan',          bool: true },
+      { key: 'accessVeeduBalan', label: 'Veedu Balan',         bool: true },
+    ],
+  },
+  {
+    title: 'Other Features',
+    icon: '⚙️',
+    fields: [
+      { key: 'accessPdfDownload', label: 'PDF Export',    bool: true },
+      { key: 'accessReminders',   label: 'Reminders',     bool: true },
+      { key: 'accessAiFeatures',  label: 'AI Features',   bool: true },
+    ],
+  },
 ];
+
+// Flat list for "Enable All / Disable All" and card display
+const PAGE_ACCESS_FIELDS: FieldDef[] = ACCESS_SECTIONS.flatMap(s => s.fields);
 
 const COUNT_FIELDS: FieldDef[] = [
   { key: 'jathagamCount',         label: 'Jathagam Charts',    bool: false, hint: '-1 = ∞' },
@@ -75,11 +107,18 @@ const COUNT_FIELDS: FieldDef[] = [
 const ALL_FIELDS = [...PAGE_ACCESS_FIELDS, ...COUNT_FIELDS];
 
 const DEFAULT_LIMITS: PlanLimits = {
-  accessJathagam: true, accessPorutham: false, accessAdvancedMatching: false,
-  accessPanchangam: true, accessNallaNeram: true, accessMuhurtam: false,
-  accessRasiBalan: false, accessVeeduBalan: false, accessGocharaChart: false,
+  // Jathagam
+  accessJathagam: true, accessJathagamCreate: false, accessJathagamDetail: true, accessKocharamCompare: false,
+  // Porutham
+  accessPorutham: false, accessAdvancedMatching: false,
+  // Panchangam
+  accessPanchangam: true, accessPanchangamCalendar: true, accessMuhurtam: false, accessGocharaChart: false,
+  // Home
+  accessNallaNeram: true, accessRasiBalan: false, accessVeeduBalan: false,
+  // Other
   accessPdfDownload: false, accessReminders: false, accessAiFeatures: false,
-  jathagamCount: 3, basicPoruthamCount: 0, advancedPoruthamCount: 0,
+  // Counts
+  jathagamCount: 0, basicPoruthamCount: 0, advancedPoruthamCount: 0,
   muhurtamSearchCount: 0, rasiBalanSearchCount: 0,
   reminderCount: 0, pdfDownloadCount: 0, aiTokensCount: 0,
   advancedMatching: false,
@@ -236,17 +275,23 @@ export default function PlansPage() {
                             </div>
                           </div>
 
-                          {/* Page Access */}
-                          <div className="border-t border-white/10 pt-3 space-y-1.5">
-                            <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-2">Page Access</p>
-                            <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
-                              {PAGE_ACCESS_FIELDS.map(({ key, label }) => (
-                                <div key={key} className="flex items-center justify-between">
-                                  <span className="text-[11px] text-white/50 truncate pr-1">{label.split(' (')[0]}</span>
-                                  <BoolChip v={!!plan.limits[key]} />
+                          {/* Screen Access — grouped */}
+                          <div className="border-t border-white/10 pt-3 space-y-2.5">
+                            {ACCESS_SECTIONS.map(section => (
+                              <div key={section.title}>
+                                <p className="text-[10px] font-semibold text-white/25 uppercase tracking-widest mb-1.5">
+                                  {section.icon} {section.title}
+                                </p>
+                                <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+                                  {section.fields.map(({ key, label }) => (
+                                    <div key={key} className="flex items-center justify-between">
+                                      <span className="text-[11px] text-white/45 truncate pr-1">{label}</span>
+                                      <BoolChip v={!!plan.limits[key]} />
+                                    </div>
+                                  ))}
                                 </div>
-                              ))}
-                            </div>
+                              </div>
+                            ))}
                           </div>
 
                           {/* Counts */}
@@ -343,10 +388,10 @@ export default function PlansPage() {
                 </label>
               </div>
 
-              {/* ── Page Access ── */}
-              <div className="border border-white/10 rounded-xl p-4 space-y-3">
+              {/* ── Screen Access (grouped by section) ── */}
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold text-white/60 uppercase tracking-wider">Page & Feature Access</p>
+                  <p className="text-xs font-semibold text-white/60 uppercase tracking-wider">Screen Access</p>
                   <div className="flex gap-2">
                     <button onClick={() => setAllPageAccess(true)}
                       className="text-[11px] text-green-400 bg-green-400/10 px-2 py-0.5 rounded hover:bg-green-400/20 transition-colors">
@@ -358,23 +403,45 @@ export default function PlansPage() {
                     </button>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
-                  {PAGE_ACCESS_FIELDS.map(({ key, label }) => {
-                    const on = !!form.limits[key];
-                    return (
-                      <div
-                        key={key}
-                        className="flex items-center justify-between cursor-pointer group select-none"
-                        onClick={() => setLimitField(key, !on)}
-                      >
-                        <span className="text-sm text-white/70 group-hover:text-white transition-colors">{label}</span>
-                        <div className={`w-10 h-5 rounded-full transition-colors flex-shrink-0 relative ${on ? 'bg-indigo-500' : 'bg-white/10'}`}>
-                          <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${on ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                        </div>
+
+                {ACCESS_SECTIONS.map(section => (
+                  <div key={section.title} className="border border-white/8 rounded-xl overflow-hidden">
+                    {/* Section header */}
+                    <div className="flex items-center justify-between px-3 py-2 bg-white/5">
+                      <span className="text-xs font-semibold text-white/70">{section.icon} {section.title}</span>
+                      <div className="flex gap-1.5">
+                        <button
+                          onClick={() => section.fields.forEach(f => setLimitField(f.key, true))}
+                          className="text-[10px] text-green-400/70 hover:text-green-400 px-1.5 py-0.5 rounded transition-colors">
+                          All on
+                        </button>
+                        <button
+                          onClick={() => section.fields.forEach(f => setLimitField(f.key, false))}
+                          className="text-[10px] text-red-400/70 hover:text-red-400 px-1.5 py-0.5 rounded transition-colors">
+                          All off
+                        </button>
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
+                    {/* Section fields */}
+                    <div className="divide-y divide-white/5">
+                      {section.fields.map(({ key, label }) => {
+                        const on = !!form.limits[key];
+                        return (
+                          <div
+                            key={key}
+                            className="flex items-center justify-between px-3 py-2.5 cursor-pointer hover:bg-white/3 select-none group"
+                            onClick={() => setLimitField(key, !on)}
+                          >
+                            <span className="text-sm text-white/65 group-hover:text-white/90 transition-colors">{label}</span>
+                            <div className={`w-9 h-5 rounded-full transition-colors flex-shrink-0 relative ${on ? 'bg-indigo-500' : 'bg-white/10'}`}>
+                              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${on ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
 
               {/* ── Usage Counts ── */}
