@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import axios from 'axios';
@@ -159,16 +159,20 @@ export default function PlansPage() {
     queryKey: ['admin-plans'],
     queryFn: () => axios.get(`${API}/plans`, { headers: authHeaders() })
       .then(r => (r.data.data ?? []).sort((a: Plan, b: Plan) => a.sortOrder - b.sortOrder)),
-    onSuccess: (data) => setOrderedPlans(data),
   });
+
+  // Sync ordered list whenever the query data refreshes
+  useEffect(() => {
+    if (plans.length) setOrderedPlans(plans);
+  }, [plans]);
 
   const displayPlans = orderedPlans.length ? orderedPlans : plans;
 
   const reorderMutation = useMutation({
     mutationFn: async (items: Plan[]) => {
       await Promise.all(
-        items.map((p, i) =>
-          axios.put(`${API}/plans/${p._id}`, { ...p, sortOrder: i }, { headers: authHeaders() })
+        items.map(({ _id, ...rest }, i) =>
+          axios.put(`${API}/plans/${_id}`, { ...rest, sortOrder: i }, { headers: authHeaders() })
         )
       );
     },
@@ -189,10 +193,12 @@ export default function PlansPage() {
   }
 
   const save = useMutation({
-    mutationFn: (data: Partial<Plan> & { _id?: string }) =>
-      data._id
-        ? axios.put(`${API}/plans/${data._id}`, { ...data, applyMode }, { headers: authHeaders() })
-        : axios.post(`${API}/plans`, data, { headers: authHeaders() }),
+    mutationFn: (data: Partial<Plan> & { _id?: string }) => {
+      const { _id, ...body } = data;
+      return _id
+        ? axios.put(`${API}/plans/${_id}`, { ...body, applyMode }, { headers: authHeaders() })
+        : axios.post(`${API}/plans`, body, { headers: authHeaders() });
+    },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-plans'] }); closeForm(); },
   });
 
