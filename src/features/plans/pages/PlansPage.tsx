@@ -200,26 +200,18 @@ export default function PlansPage() {
       setSaveError('');
 
       if (_id) {
-        // 1. Update basic info — no _id, no limits subdocument
+        // 1. Update basic info + applyMode (PUT handles push-to-all on backend)
         await axios.put(
           `${API}/plans/${_id}`,
           { ...basicInfo, applyMode },
           { headers: authHeaders() },
         );
-        // 2. Update limits via dedicated endpoint (always worked)
+        // 2. Update limits — pass applyMode so backend can push to all subscribers
         await axios.patch(
           `${API}/plans/${_id}/limits`,
-          limits,
+          { ...limits, applyMode },
           { headers: authHeaders() },
         );
-        // 3. If "apply all", push to existing subscribers
-        if (applyMode === 'all') {
-          await axios.post(
-            `${API}/plans/${_id}/push-limits`,
-            {},
-            { headers: authHeaders() },
-          );
-        }
       } else {
         await axios.post(`${API}/plans`, { ...basicInfo, limits }, { headers: authHeaders() });
       }
