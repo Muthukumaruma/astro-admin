@@ -335,14 +335,17 @@ export default function PlansPage() {
 
       {/* ── Edit / Create modal ── */}
       {open && (
-        <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-gray-900 border border-white/10 rounded-2xl w-full max-w-2xl my-4">
-            <div className="sticky top-0 bg-gray-900 border-b border-white/10 px-6 py-4 flex items-center justify-between rounded-t-2xl z-10">
+        <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 border border-white/10 rounded-2xl w-full max-w-2xl flex flex-col max-h-[92vh]">
+
+            {/* Fixed header — never scrolls */}
+            <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-white/10 rounded-t-2xl">
               <h2 className="text-base font-bold text-white">{editId ? 'Edit Plan' : 'New Plan'}</h2>
-              <button onClick={closeForm} className="text-white/40 hover:text-white text-xl leading-none">✕</button>
+              <button onClick={closeForm} className="text-white/40 hover:text-white text-xl leading-none w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors">✕</button>
             </div>
 
-            <div className="p-6 space-y-5">
+            {/* Scrollable body */}
+            <div className="overflow-y-auto flex-1 p-6 space-y-5">
               {/* Basic info */}
               <div className="grid grid-cols-2 gap-3">
                 {[
