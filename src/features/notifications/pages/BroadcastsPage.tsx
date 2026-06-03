@@ -69,6 +69,7 @@ function ComposeModal({ onClose }: { onClose: () => void }) {
   const [bodies, setBodies]  = useState<Record<string, string>>({ en: '' });
   const [audience, setAudience] = useState<BroadcastAudience>('all');
   const [targetScreen, setTargetScreen] = useState('');
+  const [deliverAtLocalTime, setDeliverAtLocalTime] = useState(false);
   const [scheduledAt, setScheduledAt] = useState(() => {
     const d = new Date(); d.setMinutes(d.getMinutes() + 30);
     return toLocalDatetimeValue(d);
@@ -91,8 +92,9 @@ function ComposeModal({ onClose }: { onClose: () => void }) {
       titleLocales: titles,
       bodyLocales:  bodies,
       audience,
-      targetScreen: targetScreen || undefined,
-      scheduledAt:  new Date(scheduledAt).toISOString(),
+      targetScreen:       targetScreen || undefined,
+      deliverAtLocalTime: deliverAtLocalTime,
+      scheduledAt:        new Date(scheduledAt).toISOString(),
       status:       saveAsDraft ? 'draft' : 'scheduled',
     });
   }
@@ -194,13 +196,39 @@ function ComposeModal({ onClose }: { onClose: () => void }) {
 
           {/* Schedule */}
           <div>
-            <label className="block text-white/50 text-xs font-medium mb-2">Schedule Date & Time</label>
+            <label className="block text-white/50 text-xs font-medium mb-2">
+              Schedule Date &amp; Time
+              <span className="text-white/30 ml-2">
+                (your local time: {Intl.DateTimeFormat().resolvedOptions().timeZone})
+              </span>
+            </label>
             <input
               type="datetime-local"
               value={scheduledAt}
               onChange={e => setScheduledAt(e.target.value)}
               className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-red-500/50"
             />
+            <p className="text-white/30 text-xs mt-1">
+              UTC equivalent: {scheduledAt ? new Date(scheduledAt).toUTCString() : '—'}
+            </p>
+
+            {/* Deliver at user's local time toggle */}
+            <label className="flex items-center gap-3 cursor-pointer mt-3">
+              <input
+                type="checkbox"
+                checked={deliverAtLocalTime}
+                onChange={e => setDeliverAtLocalTime(e.target.checked)}
+                className="accent-red-500 w-4 h-4"
+              />
+              <div>
+                <span className="text-white/70 text-sm font-medium">Deliver at user's local time</span>
+                <p className="text-white/30 text-xs mt-0.5">
+                  {deliverAtLocalTime
+                    ? `Each user receives at ${scheduledAt ? new Date(scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'} in their own timezone (India at 9 AM IST, US at 9 AM EST, etc.)`
+                    : 'All users receive at the same UTC moment regardless of location'}
+                </p>
+              </div>
+            </label>
           </div>
 
           {/* Draft toggle */}
