@@ -276,8 +276,18 @@ function BroadcastRow({ item }: { item: Broadcast }) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['broadcasts'] }),
   });
 
+  const sendNowMutation = useMutation({
+    mutationFn: () => axios.post(`${API}/admin/broadcasts/${item._id}/send-now`, {}, { headers: authHeaders() }),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ['broadcasts'] });
+      alert(`✅ Sent to ${res.data.data?.success ?? 0} devices`);
+    },
+    onError: (e: any) => alert(`❌ ${e?.response?.data?.error ?? 'Send failed'}`),
+  });
+
   const cfg = STATUS_CONFIG[item.status];
-  const canCancel = item.status === 'scheduled' || item.status === 'draft';
+  const canCancel  = item.status === 'scheduled' || item.status === 'draft';
+  const canSendNow = item.status === 'scheduled' || item.status === 'draft';
 
   return (
     <div className="border border-white/5 rounded-xl overflow-hidden">
@@ -301,6 +311,19 @@ function BroadcastRow({ item }: { item: Broadcast }) {
             <p className="text-green-400 text-xs font-semibold">{item.sentCount} sent</p>
             {item.failedCount > 0 && <p className="text-red-400 text-xs">{item.failedCount} failed</p>}
           </div>
+        )}
+        {canSendNow && (
+          <button
+            onClick={e => {
+              e.stopPropagation();
+              if (confirm(`Send "${item.titleLocales['en']}" NOW to all users?`)) sendNowMutation.mutate();
+            }}
+            disabled={sendNowMutation.isPending}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-green-500/15 text-green-400 hover:bg-green-500/25 text-xs font-semibold transition-colors flex-shrink-0 disabled:opacity-40"
+          >
+            <Send className="w-3 h-3" />
+            {sendNowMutation.isPending ? '…' : 'Send Now'}
+          </button>
         )}
         {canCancel && (
           <button
