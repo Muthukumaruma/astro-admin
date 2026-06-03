@@ -82,21 +82,52 @@ function ComposeModal({ onClose }: { onClose: () => void }) {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['broadcasts'] }); onClose(); },
   });
 
+  const createAndSendMutation = useMutation({
+    mutationFn: async (body: any) => {
+      // Create the broadcast first
+      const res = await axios.post(`${API}/admin/broadcasts`, body, { headers: authHeaders() });
+      const id = res.data.data?._id ?? res.data._id;
+      // Immediately send
+      const sendRes = await axios.post(`${API}/admin/broadcasts/${id}/send-now`, {}, { headers: authHeaders() });
+      return sendRes.data.data;
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ['broadcasts'] });
+      alert(`✅ Sent to ${data?.success ?? 0} devices`);
+      onClose();
+    },
+    onError: (e: any) => alert(`❌ ${e?.response?.data?.error ?? 'Send failed'}`),
+  });
+
+  function getPayload(draft = false) {
+    return {
+      titleLocales:       titles,
+      bodyLocales:        bodies,
+      audience,
+      targetScreen:       targetScreen || undefined,
+      deliverAtLocalTime: deliverAtLocalTime,
+      scheduledAt:        new Date(scheduledAt).toISOString(),
+      status:             draft ? 'draft' : 'scheduled',
+    };
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!titles['en']?.trim() || !bodies['en']?.trim()) {
       alert('English title and body are required');
       return;
     }
-    createMutation.mutate({
-      titleLocales: titles,
-      bodyLocales:  bodies,
-      audience,
-      targetScreen:       targetScreen || undefined,
-      deliverAtLocalTime: deliverAtLocalTime,
-      scheduledAt:        new Date(scheduledAt).toISOString(),
-      status:       saveAsDraft ? 'draft' : 'scheduled',
-    });
+    createMutation.mutate(getPayload(saveAsDraft));
+  }
+
+  function handleSendNow(e: React.MouseEvent) {
+    e.preventDefault();
+    if (!titles['en']?.trim() || !bodies['en']?.trim()) {
+      alert('English title and body are required');
+      return;
+    }
+    if (!confirm(`Send "${titles['en']}" NOW to all matching users?`)) return;
+    createAndSendMutation.mutate(getPayload(false));
   }
 
   return (
@@ -246,17 +277,31 @@ function ComposeModal({ onClose }: { onClose: () => void }) {
             <p className="text-red-400 text-sm">Failed to create broadcast. Try again.</p>
           )}
 
-          <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className="flex-1 px-4 py-2.5 rounded-xl border border-white/10 text-white/50 hover:text-white text-sm transition-colors">
+          <div className="flex gap-2 pt-2 flex-wrap">
+            <button type="button" onClick={onClose}
+              className="px-4 py-2.5 rounded-xl border border-white/10 text-white/50 hover:text-white text-sm transition-colors">
               Cancel
             </button>
+            {/* Send Now — creates + sends immediately */}
+            {!saveAsDraft && (
+              <button
+                type="button"
+                onClick={handleSendNow}
+                disabled={createAndSendMutation.isPending || createMutation.isPending}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <Send className="w-4 h-4" />
+                {createAndSendMutation.isPending ? 'Sending…' : 'Send Now'}
+              </button>
+            )}
+            {/* Schedule — saves for later */}
             <button
               type="submit"
-              disabled={createMutation.isPending}
+              disabled={createMutation.isPending || createAndSendMutation.isPending}
               className="flex-1 px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               <Send className="w-4 h-4" />
-              {createMutation.isPending ? 'Creating…' : saveAsDraft ? 'Save Draft' : 'Schedule'}
+              {createMutation.isPending ? 'Saving…' : saveAsDraft ? 'Save Draft' : 'Schedule'}
             </button>
           </div>
         </form>
