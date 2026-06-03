@@ -68,6 +68,7 @@ function ComposeModal({ onClose }: { onClose: () => void }) {
   const [titles, setTitles] = useState<Record<string, string>>({ en: '' });
   const [bodies, setBodies]  = useState<Record<string, string>>({ en: '' });
   const [audience, setAudience] = useState<BroadcastAudience>('all');
+  const [targetScreen, setTargetScreen] = useState('');
   const [scheduledAt, setScheduledAt] = useState(() => {
     const d = new Date(); d.setMinutes(d.getMinutes() + 30);
     return toLocalDatetimeValue(d);
@@ -90,6 +91,7 @@ function ComposeModal({ onClose }: { onClose: () => void }) {
       titleLocales: titles,
       bodyLocales:  bodies,
       audience,
+      targetScreen: targetScreen || undefined,
       scheduledAt:  new Date(scheduledAt).toISOString(),
       status:       saveAsDraft ? 'draft' : 'scheduled',
     });
@@ -166,6 +168,28 @@ function ComposeModal({ onClose }: { onClose: () => void }) {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Deep link screen */}
+          <div>
+            <label className="block text-white/50 text-xs font-medium mb-2">
+              Open Screen on Tap <span className="text-white/30">(optional)</span>
+            </label>
+            <select
+              value={targetScreen}
+              onChange={e => setTargetScreen(e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-red-500/50"
+            >
+              <option value="">Default (Home Screen)</option>
+              <option value="DailyHoroscope">📅 Daily Horoscope</option>
+              <option value="BalanHub">📊 Balan Hub</option>
+              <option value="Charts">🪐 Jathagam (Chart List)</option>
+              <option value="Panchangam">📆 Panchangam</option>
+              <option value="Porutham">💑 Marriage Matching</option>
+              <option value="WidgetGuide">🪄 Widget Guide</option>
+              <option value="Settings">⚙️ Settings</option>
+              <option value="Subscription">💎 Subscription / Plans</option>
+            </select>
           </div>
 
           {/* Schedule */}
