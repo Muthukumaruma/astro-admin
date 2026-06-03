@@ -44,8 +44,65 @@ const EMPTY: Omit<Promo, '_id'> = {
 
 const SCREENS = [
   'Home','Charts','Porutham','Panchangam','Settings','Subscription',
-  'RasiBalan','VeeduBalan','NallaNeram',
+  'RasiBalan','VeeduBalan','NallaNeram','DailyHoroscope','BalanHub','WidgetGuide',
 ];
+
+// Pre-filled widget promotion template (all 6 languages)
+const WIDGET_TEMPLATE: Omit<Promo, '_id'> = {
+  content: {
+    en: {
+      title: '📱 Add Jothisham to Your Home Screen!',
+      subtitle: 'New Feature',
+      body: 'See Nalla Neram, your Nakshatra, Rasi and daily Balan scores without opening the app. Available in 2 sizes.',
+      ctaLabel: 'How to Add Widget',
+      secondaryCtaLabel: 'Later',
+    },
+    ta: {
+      title: '📱 ஜோதிஷம் வீட்டுத்திரையில் சேர்க்கவும்!',
+      subtitle: 'புதிய அம்சம்',
+      body: 'App திறக்காமலேயே நல்ல நேரம், நட்சத்திரம், ராசி மற்றும் தினசரி பலன்களை பார்க்கவும். 2 அளவுகளில் கிடைக்கும்.',
+      ctaLabel: 'விட்ஜெட் சேர்ப்பது எப்படி',
+      secondaryCtaLabel: 'பின்னர்',
+    },
+    hi: {
+      title: '📱 होम स्क्रीन पर जोतिषम जोड़ें!',
+      subtitle: 'नई सुविधा',
+      body: 'App खोले बिना नल्ला नेरम, नक्षत्र, राशि और दैनिक बलम स्कोर देखें। 2 आकारों में उपलब्ध।',
+      ctaLabel: 'विजेट कैसे जोड़ें',
+      secondaryCtaLabel: 'बाद में',
+    },
+    te: {
+      title: '📱 హోమ్ స్క్రీన్‌కు జోతిషం జోడించండి!',
+      subtitle: 'కొత్త అంశం',
+      body: 'App తెరవకుండానే నల్ల నేరం, నక్షత్రం, రాశి మరియు రోజువారీ బలం స్కోర్‌లు చూడండి.',
+      ctaLabel: 'విడ్జెట్ ఎలా జోడించాలి',
+      secondaryCtaLabel: 'తర్వాత',
+    },
+    ml: {
+      title: '📱 ഹോം സ്ക്രീനിൽ ജ്യോതിഷം ചേർക്കൂ!',
+      subtitle: 'പുതിയ ഫീച്ചർ',
+      body: 'App തുറക്കാതെ നല്ല നേരം, നക്ഷത്രം, രാശി, ദൈനദിന ബലം സ്കോർ കാണൂ. 2 വലുപ്പങ്ങളിൽ.',
+      ctaLabel: 'വിജറ്റ് ചേർക്കുന്നത് എങ്ങനെ',
+      secondaryCtaLabel: 'പിന്നീട്',
+    },
+    kn: {
+      title: '📱 ಹೋಮ್ ಸ್ಕ್ರೀನ್‌ಗೆ ಜ್ಯೋತಿಷಂ ಸೇರಿಸಿ!',
+      subtitle: 'ಹೊಸ ವೈಶಿಷ್ಟ್ಯ',
+      body: 'App ತೆರೆಯದೆ ನಲ್ಲ ನೇರಂ, ನಕ್ಷತ್ರ, ರಾಶಿ ಮತ್ತು ದೈನಂದಿನ ಬಲಂ ಸ್ಕೋರ್‌ಗಳನ್ನು ನೋಡಿ.',
+      ctaLabel: 'ವಿಜೆಟ್ ಹೇಗೆ ಸೇರಿಸುವುದು',
+      secondaryCtaLabel: 'ನಂತರ',
+    },
+  },
+  imageUrl: '',
+  backgroundColor: '#0f0d2a',
+  accentColor: '#F59E0B',
+  ctaAction: 'navigate',
+  ctaTarget: 'WidgetGuide',
+  targetAudience: 'all',
+  displayFrequency: 'once',
+  priority: 10,
+  isActive: true,
+};
 
 const AUDIENCE_LABELS: Record<Audience, string> = {
   all: 'All Users', free: 'Free Users Only',
@@ -123,10 +180,22 @@ export default function PromosPage() {
           <h1 className="text-2xl font-bold text-white">Promo Modals</h1>
           <p className="text-white/40 text-sm mt-1">Animated ads shown to users based on audience targeting</p>
         </div>
-        <button onClick={openCreate}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors">
-          + New Promo
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => {
+              setEditId(null);
+              setForm({ ...WIDGET_TEMPLATE });
+              setActiveLang('en');
+              setOpen(true);
+            }}
+            className="px-4 py-2 bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/40 text-amber-300 rounded-lg text-sm font-medium transition-colors">
+            📱 Widget Promo
+          </button>
+          <button onClick={openCreate}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors">
+            + New Promo
+          </button>
+        </div>
       </div>
 
       {isLoading ? <p className="text-white/40">Loading…</p> : (

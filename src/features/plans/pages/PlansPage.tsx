@@ -256,17 +256,16 @@ export default function PlansPage() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Subscription Plans</h1>
-          <p className="text-white/40 text-sm mt-1">
-            All page access + feature limits are live — admin changes apply instantly to every user on that plan.
-            No code changes needed.
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl md:text-2xl font-bold text-white">Subscription Plans</h1>
+          <p className="text-white/40 text-xs md:text-sm mt-1 hidden sm:block">
+            All limits are live — changes apply instantly. No code needed.
           </p>
         </div>
         <button onClick={openCreate}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors">
-          + New Plan
+          className="flex-shrink-0 px-3 py-2 md:px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors">
+          + New
         </button>
       </div>
 
@@ -277,9 +276,9 @@ export default function PlansPage() {
         <p className="text-white/40">Loading…</p>
       ) : (
         <DragDropContext onDragEnd={onDragEnd}>
-          <Droppable droppableId="plans" direction="horizontal">
+          <Droppable droppableId="plans" direction="vertical">
             {(provided) => (
-              <div className="grid gap-5 md:grid-cols-3" ref={provided.innerRef} {...provided.droppableProps}>
+              <div className="flex flex-col gap-4 md:grid md:grid-cols-3 md:gap-5" ref={provided.innerRef} {...provided.droppableProps}>
                 {displayPlans.map((plan, index) => (
                   <Draggable key={plan._id} draggableId={plan._id} index={index}>
                     {(drag, snapshot) => (
@@ -312,31 +311,27 @@ export default function PlansPage() {
                             </div>
                           </div>
 
-                          {/* Screen Access — grouped */}
-                          <div className="border-t border-white/10 pt-3 space-y-2.5">
-                            {ACCESS_SECTIONS.map(section => (
-                              <div key={section.title}>
-                                <p className="text-[10px] font-semibold text-white/25 uppercase tracking-widest mb-1.5">
-                                  {section.icon} {section.title}
-                                </p>
-                                <div className="grid grid-cols-2 gap-x-2 gap-y-1">
-                                  {section.fields.map(({ key, label }) => (
-                                    <div key={key} className="flex items-center justify-between">
-                                      <span className="text-[11px] text-white/45 truncate pr-1">{label}</span>
-                                      <BoolChip v={!!plan.limits[key]} />
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            ))}
+                          {/* Access summary — chips */}
+                          <div className="border-t border-white/10 pt-3">
+                            <p className="text-[10px] font-semibold text-white/25 uppercase tracking-widest mb-2">Screen Access</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {PAGE_ACCESS_FIELDS.map(({ key, label }) => (
+                                <span key={key} className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                                  !!plan.limits[key]
+                                    ? 'bg-green-500/15 text-green-400 border border-green-500/20'
+                                    : 'bg-white/5 text-white/20 border border-white/5'
+                                }`}>
+                                  {label}
+                                </span>
+                              ))}
+                            </div>
                           </div>
 
-                          {/* Counts */}
-                          <div className="border-t border-white/10 pt-3 space-y-1.5">
-                            <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-2">Usage Counts / month</p>
+                          {/* Counts — compact grid */}
+                          <div className="border-t border-white/10 pt-3 grid grid-cols-2 gap-x-3 gap-y-1">
                             {COUNT_FIELDS.map(({ key, label }) => (
                               <div key={key} className="flex justify-between items-center text-xs">
-                                <span className="text-white/50">{label}</span>
+                                <span className="text-white/40 truncate pr-1">{label}</span>
                                 <CountChip v={plan.limits[key] as number} />
                               </div>
                             ))}
@@ -348,13 +343,13 @@ export default function PlansPage() {
                               className="px-2 py-1.5 text-white/20 hover:text-white/60 cursor-grab active:cursor-grabbing transition-colors text-lg select-none"
                               title="Drag to reorder">⠿</div>
                             <button onClick={() => openEdit(plan)}
-                              className="flex-1 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 rounded-lg text-xs font-semibold transition-colors">
+                              className="flex-1 py-2 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 rounded-lg text-xs font-semibold transition-colors">
                               Edit Limits
                             </button>
                             {!plan.isFree && plan.isActive && (
                               <button onClick={() => deactivate.mutate(plan._id)}
-                                className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/25 text-red-400 rounded-lg text-xs transition-colors">
-                                Deactivate
+                                className="px-3 py-2 bg-red-500/10 hover:bg-red-500/25 text-red-400 rounded-lg text-xs transition-colors">
+                                Off
                               </button>
                             )}
                           </div>
@@ -372,17 +367,17 @@ export default function PlansPage() {
 
       {/* ── Edit / Create modal ── */}
       {open && (
-        <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 border border-white/10 rounded-2xl w-full max-w-2xl flex flex-col max-h-[92vh]">
+        <div className="fixed inset-0 bg-black/75 flex items-end md:items-center justify-center z-50 md:p-4">
+          <div className="bg-gray-900 border border-white/10 rounded-t-2xl md:rounded-2xl w-full md:max-w-2xl flex flex-col h-[95vh] md:max-h-[92vh]">
 
-            {/* Fixed header — never scrolls */}
-            <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-white/10 rounded-t-2xl">
+            {/* Fixed header */}
+            <div className="flex-shrink-0 flex items-center justify-between px-4 md:px-6 py-4 border-b border-white/10 rounded-t-2xl">
               <h2 className="text-base font-bold text-white">{editId ? 'Edit Plan' : 'New Plan'}</h2>
               <button onClick={closeForm} className="text-white/40 hover:text-white text-xl leading-none w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors">✕</button>
             </div>
 
             {/* Scrollable body */}
-            <div className="overflow-y-auto flex-1 p-6 space-y-5">
+            <div className="overflow-y-auto flex-1 px-4 md:px-6 py-4 space-y-4">
               {/* Basic info */}
               <div className="grid grid-cols-2 gap-3">
                 {[
@@ -469,7 +464,7 @@ export default function PlansPage() {
                         return (
                           <div
                             key={key}
-                            className="flex items-center justify-between px-3 py-3 cursor-pointer hover:bg-white/5 select-none group"
+                            className="flex items-center justify-between px-3 py-3.5 cursor-pointer hover:bg-white/5 select-none group active:bg-white/10"
                             onClick={() => setLimitField(key, !on)}
                           >
                             <span className="text-sm text-white/70 group-hover:text-white transition-colors">{label}</span>
@@ -490,7 +485,7 @@ export default function PlansPage() {
                   Usage Counts per Month
                   <span className="ml-2 text-white/30 font-normal normal-case tracking-normal">-1 = unlimited · 0 = blocked</span>
                 </p>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
                   {COUNT_FIELDS.map(({ key, label, hint }) => (
                     <div key={key} className="flex items-center justify-between gap-2">
                       <label className="text-sm text-white/70 flex-1">
