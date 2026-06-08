@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
-import { Camera, Shield, Wrench, Save } from 'lucide-react';
+import { Camera, Shield, Wrench, Save, Sparkles } from 'lucide-react';
 import { useAdminAuthStore } from '../../../stores/auth.store';
 
 const API = import.meta.env.VITE_API_URL ?? 'https://api.jothisham.com/api/v1';
@@ -31,6 +31,7 @@ interface AppConfig {
   allowScreenshots:         boolean;
   screenshotBlockedScreens: string[];
   maintenanceMode:          boolean;
+  jothishamAiEnabled:       boolean;
 }
 
 export default function AdminSettingsPage() {
@@ -43,16 +44,19 @@ export default function AdminSettingsPage() {
   const [allowScreenshots,         setAllowScreenshots]         = useState<boolean | null>(null);
   const [screenshotBlockedScreens, setScreenshotBlockedScreens] = useState<string[] | null>(null);
   const [maintenanceMode,          setMaintenanceMode]          = useState<boolean | null>(null);
+  const [jothishamAiEnabled,       setJothishamAiEnabled]       = useState<boolean | null>(null);
 
   const currentAllow   = allowScreenshots         ?? cfg?.allowScreenshots         ?? true;
   const currentBlocked = screenshotBlockedScreens ?? cfg?.screenshotBlockedScreens ?? [];
   const currentMaint   = maintenanceMode          ?? cfg?.maintenanceMode          ?? false;
+  const currentJothisham = jothishamAiEnabled     ?? cfg?.jothishamAiEnabled       ?? false;
 
   const saveMutation = useMutation({
     mutationFn: () => axios.put(`${API}/app-config`, {
       allowScreenshots:         currentAllow,
       screenshotBlockedScreens: currentBlocked,
       maintenanceMode:          currentMaint,
+      jothishamAiEnabled:       currentJothisham,
     }, { headers: hdr() }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['app-config'] }); alert('✅ Saved'); },
   });
@@ -159,6 +163,36 @@ export default function AdminSettingsPage() {
             <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${currentMaint ? 'translate-x-5' : 'translate-x-0.5'}`} />
           </div>
         </label>
+      </div>
+
+      {/* Jothisham AI (Gemini + RAG engine) */}
+      <div className="glass-card p-5">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-9 h-9 rounded-xl bg-indigo-500/15 flex items-center justify-center">
+            <Sparkles className="w-5 h-5 text-indigo-400" />
+          </div>
+          <div>
+            <h2 className="text-white font-semibold">Jothisham AI</h2>
+            <p className="text-white/40 text-xs">Gemini + RAG-powered Vedic astrology prediction engine</p>
+          </div>
+        </div>
+        <label className="flex items-center justify-between p-4 bg-white/5 rounded-xl cursor-pointer">
+          <div>
+            <p className="text-white text-sm font-medium">Enable Jothisham AI</p>
+            <p className="text-white/30 text-xs mt-0.5">
+              {currentJothisham
+                ? 'On — AI chat & predictions are powered by Gemini + the astrology knowledge base (Vector DB / RAG)'
+                : 'Off — AI chat falls back to the classic engine'}
+            </p>
+          </div>
+          <div onClick={() => setJothishamAiEnabled(!currentJothisham)}
+            className={`w-11 h-6 rounded-full transition-colors cursor-pointer relative flex-shrink-0 ${currentJothisham ? 'bg-indigo-500' : 'bg-white/10'}`}>
+            <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${currentJothisham ? 'translate-x-5' : 'translate-x-0.5'}`} />
+          </div>
+        </label>
+        <p className="text-white/25 text-xs mt-3 px-1">
+          Manage the astrology knowledge base (RAG corpus) used by Jothisham AI in <span className="text-white/40">Jothisham Knowledge</span>.
+        </p>
       </div>
     </motion.div>
   );

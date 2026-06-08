@@ -34,6 +34,7 @@ interface Plan {
   _id: string; slug: string; name: string; description: string;
   price: number; currency: string; isFree: boolean; isActive: boolean;
   sortOrder: number; limits: PlanLimits;
+  singleJathagamPrice?: number; singlePoruthamPrice?: number;
 }
 
 // ─── Field definitions ────────────────────────────────────────────────────────
@@ -127,6 +128,7 @@ const DEFAULT_LIMITS: PlanLimits = {
 const EMPTY: Omit<Plan, '_id'> = {
   slug: '', name: '', description: '', price: 0, currency: 'INR',
   isFree: false, isActive: true, sortOrder: 0, limits: { ...DEFAULT_LIMITS },
+  singleJathagamPrice: 0, singlePoruthamPrice: 0,
 };
 
 // ─── Display helpers ──────────────────────────────────────────────────────────
@@ -421,6 +423,22 @@ export default function PlansPage() {
                     className="accent-indigo-500 w-4 h-4" />
                   Free plan
                 </label>
+              </div>
+
+              {/* ── Pay-per-item pricing (one-off purchases beyond the plan limit) ── */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-white/50 block mb-1">Single Jathagam Price (₹) <span className="text-white/30">— 0 = not offered</span></label>
+                  <input type="number" value={form.singleJathagamPrice ?? 0}
+                    onChange={e => setForm(f => ({ ...f, singleJathagamPrice: +e.target.value }))}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white" />
+                </div>
+                <div>
+                  <label className="text-xs text-white/50 block mb-1">Single Porutham Price (₹) <span className="text-white/30">— 0 = not offered</span></label>
+                  <input type="number" value={form.singlePoruthamPrice ?? 0}
+                    onChange={e => setForm(f => ({ ...f, singlePoruthamPrice: +e.target.value }))}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white" />
+                </div>
               </div>
 
               {/* ── Screen Access (grouped by section) ── */}

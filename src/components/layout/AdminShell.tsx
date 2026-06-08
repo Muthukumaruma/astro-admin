@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 import { useState } from 'react';
 import {
   LayoutDashboard, Users, Star, CreditCard,
-  Sparkles, Settings, LogOut, Shield, Bell, Layers, Megaphone, Menu, X,
+  Sparkles, Settings, LogOut, Shield, Bell, Layers, Megaphone, Menu, X, BookOpen,
 } from 'lucide-react';
 import { useAdminAuthStore } from '../../stores/auth.store';
 import type { ReactNode } from 'react';
@@ -15,6 +15,7 @@ const NAV = [
   { label: 'Subscriptions', icon: CreditCard,      path: '/subscriptions' },
   { label: 'Payments',      icon: CreditCard,      path: '/payments' },
   { label: 'AI Usage',      icon: Sparkles,        path: '/ai-usage' },
+  { label: 'Jothisham Knowledge', icon: BookOpen,  path: '/jothisham-knowledge' },
   { label: 'Promo Modals',  icon: Megaphone,       path: '/promos' },
   { label: 'Notifications', icon: Bell,            path: '/notifications' },
   { label: 'Settings',      icon: Settings,        path: '/settings' },

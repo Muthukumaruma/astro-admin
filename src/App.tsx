@@ -13,6 +13,7 @@ const AIUsagePage        = lazy(() => import('./features/ai-usage/pages/AIUsageP
 const PaymentsPage       = lazy(() => import('./features/payments/pages/PaymentsPage'));
 const BroadcastsPage     = lazy(() => import('./features/notifications/pages/BroadcastsPage'));
 const SettingsPage       = lazy(() => import('./features/settings/pages/AdminSettingsPage'));
+const JothishamKnowledgePage = lazy(() => import('./features/jothisham/pages/JothishamKnowledgePage'));
 const LoginPage      = lazy(() => import('./features/auth/AdminLoginPage'));
 
 export default function App() {
@@ -44,6 +45,7 @@ export default function App() {
           <Route path="/ai-usage"       element={<AIUsagePage />} />
           <Route path="/notifications"  element={<BroadcastsPage />} />
           <Route path="/settings"       element={<SettingsPage />} />
+          <Route path="/jothisham-knowledge" element={<JothishamKnowledgePage />} />
           <Route path="*"             element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
