@@ -114,8 +114,12 @@ export default function JothishamKnowledgePage() {
       body.append('category', ingestForm.category);
       body.append('language', ingestForm.language);
       body.append('source', ingestForm.source);
+      // Don't set Content-Type manually for FormData — axios needs to compute
+      // the multipart boundary itself. A hardcoded value here strips it,
+      // which breaks the upload server-side and surfaces as a CORS error
+      // in the browser (the failed/aborted response carries no CORS headers).
       const res = await axios.post(`${API}/jothisham/knowledge/ingest`, body, {
-        headers: { ...hdr(), 'Content-Type': 'multipart/form-data' },
+        headers: hdr(),
       });
       return res.data.data as { jobId: string };
     },
