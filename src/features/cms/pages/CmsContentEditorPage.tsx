@@ -169,7 +169,7 @@ export default function CmsContentEditorPage() {
 
           <div>
             <label className="text-xs text-white/50 block mb-1.5">Content</label>
-            <TiptapEditor content={body} onChange={setBody} />
+            <TiptapEditor content={body} onChange={setBody} language={language} />
           </div>
 
           <label className="flex items-center gap-2 cursor-pointer text-sm text-white/60 select-none">

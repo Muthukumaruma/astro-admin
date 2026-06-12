@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import axios from 'axios';
 import { useEditor, EditorContent, type JSONContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
@@ -7,14 +8,15 @@ import Placeholder from '@tiptap/extension-placeholder';
 import {
   Bold, Italic, Strikethrough, Heading1, Heading2, Heading3,
   List, ListOrdered, Quote, AlignLeft, AlignCenter, AlignRight, AlignJustify,
-  Link as LinkIcon, Image as ImageIcon, Undo, Redo,
+  Link as LinkIcon, Image as ImageIcon, Undo, Redo, FileUp, Loader2,
 } from 'lucide-react';
-import { uploadCmsImage } from '../api/cms.api';
+import { uploadCmsImage, importCmsContent, type CmsImportMode, type Lang } from '../api/cms.api';
 import { ResizableImage } from './resizable-image';
 
 interface TiptapEditorProps {
   content: JSONContent | null;
   onChange: (json: JSONContent) => void;
+  language?: Lang;
 }
 
 function ToolbarButton({ active, onClick, title, children }: {
@@ -34,11 +36,15 @@ function ToolbarButton({ active, onClick, title, children }: {
   );
 }
 
-export default function TiptapEditor({ content, onChange }: TiptapEditorProps) {
+export default function TiptapEditor({ content, onChange, language = 'en' }: TiptapEditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
   const loadedRef = useRef(false);
 
   const [, forceUpdate] = useState(0);
+  const [importMode, setImportMode] = useState<CmsImportMode>('auto');
+  const [importing, setImporting] = useState(false);
+  const [importMessage, setImportMessage] = useState<string | null>(null);
 
   const editor = useEditor({
     extensions: [
@@ -72,6 +78,35 @@ export default function TiptapEditor({ content, onChange }: TiptapEditorProps) {
       editor.chain().focus().setImage({ src: url }).run();
     } catch {
       // upload failed — silently ignore, user can retry
+    }
+  }
+
+  async function importContent(file: File) {
+    if (!editor) return;
+    setImporting(true);
+    setImportMessage(null);
+    try {
+      const ocrLang = language === 'ta' ? 'tam' : 'eng';
+      const result = await importCmsContent(file, importMode, ocrLang);
+
+      if (!result.skipInsert) {
+        const incoming = result.json.content as JSONContent[];
+        if (editor.isEmpty) {
+          editor.commands.setContent({ type: 'doc', content: incoming }, true);
+        } else {
+          editor.chain().focus('end').insertContent(incoming).run();
+        }
+      }
+
+      const messages: string[] = [];
+      if (result.warning) messages.push(result.warning);
+      if (result.truncated) messages.push(`Only the first pages of the document were processed (${result.pageCount} pages total).`);
+      setImportMessage(messages.length > 0 ? messages.join(' ') : 'Import complete — review the inserted text below.');
+    } catch (err) {
+      const serverMessage = axios.isAxiosError(err) ? (err.response?.data as { error?: string } | undefined)?.error : undefined;
+      setImportMessage(serverMessage ? `Import failed: ${serverMessage}` : 'Import failed — please try a different file or mode.');
+    } finally {
+      setImporting(false);
     }
   }
 
@@ -160,6 +195,26 @@ export default function TiptapEditor({ content, onChange }: TiptapEditorProps) {
           <Redo className="w-4 h-4" />
         </ToolbarButton>
 
+        <div className="w-px h-5 bg-white/10 mx-1" />
+
+        <select
+          value={importMode}
+          onChange={e => setImportMode(e.target.value as CmsImportMode)}
+          title="Import mode"
+          className="bg-black/30 border border-white/10 rounded-lg text-xs text-white/70 px-1.5 py-1.5 focus:outline-none"
+        >
+          <option value="auto">Auto-detect</option>
+          <option value="text">Plain-text PDF</option>
+          <option value="ocr">Scanned (OCR)</option>
+        </select>
+        <ToolbarButton
+          title="Import text from PDF or image"
+          onClick={() => importInputRef.current?.click()}
+          active={importing}
+        >
+          {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileUp className="w-4 h-4" />}
+        </ToolbarButton>
+
         <input
           ref={fileInputRef}
           type="file"
@@ -171,7 +226,24 @@ export default function TiptapEditor({ content, onChange }: TiptapEditorProps) {
             e.target.value = '';
           }}
         />
+        <input
+          ref={importInputRef}
+          type="file"
+          accept=".pdf,application/pdf,image/png,image/jpeg,image/webp"
+          className="hidden"
+          onChange={e => {
+            const file = e.target.files?.[0];
+            if (file) importContent(file);
+            e.target.value = '';
+          }}
+        />
       </div>
+
+      {importMessage && (
+        <div className="px-3 py-2 border-b border-white/10 bg-amber-500/10 text-amber-200 text-xs">
+          {importMessage}
+        </div>
+      )}
 
       {/* Image controls — shown when an image is selected */}
       {editor.isActive('image') && (

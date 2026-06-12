@@ -91,3 +91,22 @@ export async function uploadCmsImage(file: File): Promise<string> {
   const res = await axios.post(`${API}/admin/cms/upload`, body, { headers: hdr() });
   return res.data.data.url as string;
 }
+
+export type CmsImportMode = 'auto' | 'text' | 'ocr';
+
+export interface CmsImportResult {
+  json: { type: 'doc'; content: unknown[] };
+  pageCount: number;
+  truncated?: boolean;
+  warning?: string;
+  skipInsert?: boolean;
+}
+
+export async function importCmsContent(file: File, mode: CmsImportMode, lang: 'eng' | 'tam'): Promise<CmsImportResult> {
+  const body = new FormData();
+  body.append('file', file);
+  body.append('mode', mode);
+  body.append('lang', lang);
+  const res = await axios.post(`${API}/admin/cms/import`, body, { headers: hdr() });
+  return res.data.data as CmsImportResult;
+}
