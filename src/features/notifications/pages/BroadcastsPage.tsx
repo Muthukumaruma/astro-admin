@@ -46,6 +46,12 @@ const AUDIENCE_LABELS: Record<BroadcastAudience, string> = {
   plan_premium:  'Premium Plan',
 };
 
+interface CmsContentOption {
+  _id:   string;
+  title: string;
+  slug:  string;
+}
+
 const STATUS_CONFIG: Record<BroadcastStatus, { color: string; icon: React.ReactNode; label: string }> = {
   draft:      { color: 'text-white/40 bg-white/5',     icon: <Clock className="w-3 h-3" />,        label: 'Draft' },
   scheduled:  { color: 'text-blue-400 bg-blue-500/10', icon: <Clock className="w-3 h-3" />,        label: 'Scheduled' },
@@ -69,6 +75,8 @@ function ComposeModal({ onClose }: { onClose: () => void }) {
   const [bodies, setBodies]  = useState<Record<string, string>>({ en: '' });
   const [audience, setAudience] = useState<BroadcastAudience>('all');
   const [targetScreen, setTargetScreen] = useState('');
+  const [contentSlug, setContentSlug] = useState('');
+  const [bookSearch, setBookSearch] = useState('');
   const [deliverAtLocalTime, setDeliverAtLocalTime] = useState(false);
   const [scheduledAt, setScheduledAt] = useState(() => {
     const d = new Date(); d.setMinutes(d.getMinutes() + 30);
@@ -99,12 +107,25 @@ function ComposeModal({ onClose }: { onClose: () => void }) {
     onError: (e: any) => alert(`❌ ${e?.response?.data?.error ?? 'Send failed'}`),
   });
 
+  const { data: bookOptions } = useQuery({
+    queryKey: ['cms-content-options', bookSearch],
+    queryFn: async () => {
+      const res = await axios.get(`${API}/admin/cms/content`, {
+        headers: authHeaders(),
+        params: { sectionType: 'books', isPublished: true, search: bookSearch, limit: 10 },
+      });
+      return (res.data.data ?? []) as CmsContentOption[];
+    },
+    enabled: targetScreen === 'BooksDetail',
+  });
+
   function getPayload(draft = false) {
     return {
       titleLocales:       titles,
       bodyLocales:        bodies,
       audience,
       targetScreen:       targetScreen || undefined,
+      contentSlug:        targetScreen === 'BooksDetail' ? (contentSlug || undefined) : undefined,
       deliverAtLocalTime: deliverAtLocalTime,
       scheduledAt:        new Date(scheduledAt).toISOString(),
       status:             draft ? 'draft' : 'scheduled',
@@ -210,7 +231,7 @@ function ComposeModal({ onClose }: { onClose: () => void }) {
             </label>
             <select
               value={targetScreen}
-              onChange={e => setTargetScreen(e.target.value)}
+              onChange={e => { setTargetScreen(e.target.value); setContentSlug(''); }}
               className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-red-500/50"
             >
               <option value="">Default (Home Screen)</option>
@@ -222,7 +243,33 @@ function ComposeModal({ onClose }: { onClose: () => void }) {
               <option value="WidgetGuide">🪄 Widget Guide</option>
               <option value="Settings">⚙️ Settings</option>
               <option value="Subscription">💎 Subscription / Plans</option>
+              <option value="BooksDetail">📖 Book Detail</option>
             </select>
+
+            {targetScreen === 'BooksDetail' && (
+              <div className="mt-3 space-y-2">
+                <input
+                  type="text"
+                  placeholder="Search published books by title…"
+                  value={bookSearch}
+                  onChange={e => setBookSearch(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-white/20 text-sm focus:outline-none focus:border-red-500/50"
+                />
+                <select
+                  value={contentSlug}
+                  onChange={e => setContentSlug(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-red-500/50"
+                >
+                  <option value="">Select a book…</option>
+                  {bookOptions?.map(b => (
+                    <option key={b._id} value={b.slug}>{b.title}</option>
+                  ))}
+                </select>
+                {!contentSlug && (
+                  <p className="text-yellow-400/70 text-xs">Choose a book — required for the deep link to open the right article.</p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Schedule */}
