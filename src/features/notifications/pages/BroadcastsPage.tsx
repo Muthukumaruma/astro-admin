@@ -1,6 +1,6 @@
 ﻿import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, Plus, Send, Clock, CheckCircle, XCircle, Ban, ChevronDown, ChevronUp, Search } from 'lucide-react';
+import { Bell, Plus, Send, Clock, CheckCircle, XCircle, Ban, ChevronDown, ChevronUp, Search, Pencil, Copy, Trash2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import axios from 'axios';
@@ -23,6 +23,9 @@ interface Broadcast {
   titleLocales: Record<string, string>;
   bodyLocales:  Record<string, string>;
   audience:     BroadcastAudience;
+  targetScreen?: string;
+  contentSlug?:  string;
+  deliverAtLocalTime?: boolean;
   scheduledAt:  string;
   status:       BroadcastStatus;
   sentCount:    number;
@@ -68,25 +71,36 @@ function toLocalDatetimeValue(d: Date) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function ComposeModal({ onClose }: { onClose: () => void }) {
+interface ComposeModalProps {
+  onClose: () => void;
+  /** Pre-fill the form from an existing broadcast (edit or duplicate). */
+  initialData?: Broadcast;
+  /** When set, the form PATCHes this broadcast instead of creating a new one. */
+  editId?: string;
+}
+
+function ComposeModal({ onClose, initialData, editId }: ComposeModalProps) {
   const qc = useQueryClient();
   const [activeLang, setActiveLang] = useState('en');
-  const [titles, setTitles] = useState<Record<string, string>>({ en: '' });
-  const [bodies, setBodies]  = useState<Record<string, string>>({ en: '' });
-  const [audience, setAudience] = useState<BroadcastAudience>('all');
-  const [targetScreen, setTargetScreen] = useState('');
-  const [contentSlug, setContentSlug] = useState('');
+  const [titles, setTitles] = useState<Record<string, string>>(initialData?.titleLocales ?? { en: '' });
+  const [bodies, setBodies]  = useState<Record<string, string>>(initialData?.bodyLocales ?? { en: '' });
+  const [audience, setAudience] = useState<BroadcastAudience>(initialData?.audience ?? 'all');
+  const [targetScreen, setTargetScreen] = useState(initialData?.targetScreen ?? '');
+  const [contentSlug, setContentSlug] = useState(initialData?.contentSlug ?? '');
   const [bookSearch, setBookSearch] = useState('');
-  const [deliverAtLocalTime, setDeliverAtLocalTime] = useState(false);
+  const [deliverAtLocalTime, setDeliverAtLocalTime] = useState(initialData?.deliverAtLocalTime ?? false);
   const [scheduledAt, setScheduledAt] = useState(() => {
+    if (editId && initialData?.scheduledAt) return toLocalDatetimeValue(new Date(initialData.scheduledAt));
     const d = new Date(); d.setMinutes(d.getMinutes() + 30);
     return toLocalDatetimeValue(d);
   });
-  const [saveAsDraft, setSaveAsDraft] = useState(false);
+  const [saveAsDraft, setSaveAsDraft] = useState(editId ? initialData?.status === 'draft' : false);
 
   const createMutation = useMutation({
     mutationFn: (body: unknown) =>
-      axios.post(`${API}/admin/broadcasts`, body, { headers: authHeaders() }),
+      editId
+        ? axios.patch(`${API}/admin/broadcasts/${editId}`, body, { headers: authHeaders() })
+        : axios.post(`${API}/admin/broadcasts`, body, { headers: authHeaders() }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['broadcasts'] }); onClose(); },
   });
 
@@ -161,7 +175,8 @@ function ComposeModal({ onClose }: { onClose: () => void }) {
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
           <h2 className="text-white font-semibold text-lg flex items-center gap-2">
-            <Bell className="w-5 h-5 text-red-400" /> Compose Broadcast
+            <Bell className="w-5 h-5 text-red-400" />
+            {editId ? 'Edit Broadcast' : initialData ? 'Duplicate Broadcast' : 'Compose Broadcast'}
           </h2>
           <button onClick={onClose} className="text-white/40 hover:text-white">✕</button>
         </div>
@@ -329,8 +344,8 @@ function ComposeModal({ onClose }: { onClose: () => void }) {
               className="px-4 py-2.5 rounded-xl border border-white/10 text-white/50 hover:text-white text-sm transition-colors">
               Cancel
             </button>
-            {/* Send Now — creates + sends immediately */}
-            {!saveAsDraft && (
+            {/* Send Now — creates + sends immediately (not available when editing) */}
+            {!saveAsDraft && !editId && (
               <button
                 type="button"
                 onClick={handleSendNow}
@@ -348,7 +363,7 @@ function ComposeModal({ onClose }: { onClose: () => void }) {
               className="flex-1 px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               <Send className="w-4 h-4" />
-              {createMutation.isPending ? 'Saving…' : saveAsDraft ? 'Save Draft' : 'Schedule'}
+              {createMutation.isPending ? 'Saving…' : editId ? 'Save Changes' : saveAsDraft ? 'Save Draft' : 'Schedule'}
             </button>
           </div>
         </form>
@@ -362,10 +377,12 @@ function ComposeModal({ onClose }: { onClose: () => void }) {
 function BroadcastRow({ item }: { item: Broadcast }) {
   const qc = useQueryClient();
   const [expanded, setExpanded] = useState(false);
+  const [composeMode, setComposeMode] = useState<'edit' | 'duplicate' | null>(null);
 
   const cancelMutation = useMutation({
     mutationFn: () => axios.delete(`${API}/admin/broadcasts/${item._id}`, { headers: authHeaders() }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['broadcasts'] }),
+    onError: (e: any) => alert(`❌ ${e?.response?.data?.error ?? 'Delete failed'}`),
   });
 
   const sendNowMutation = useMutation({
@@ -380,6 +397,8 @@ function BroadcastRow({ item }: { item: Broadcast }) {
   const cfg = STATUS_CONFIG[item.status];
   const canCancel  = item.status === 'scheduled' || item.status === 'draft';
   const canSendNow = item.status === 'scheduled' || item.status === 'draft';
+  const canEdit    = item.status !== 'sent' && item.status !== 'processing';
+  const canDelete  = item.status === 'sent' || item.status === 'failed' || item.status === 'cancelled';
 
   return (
     <div className="border border-white/5 rounded-xl overflow-hidden">
@@ -417,12 +436,38 @@ function BroadcastRow({ item }: { item: Broadcast }) {
             {sendNowMutation.isPending ? '…' : 'Send Now'}
           </button>
         )}
+        {canEdit && (
+          <button
+            onClick={e => { e.stopPropagation(); setComposeMode('edit'); }}
+            title="Edit"
+            className="text-white/20 hover:text-blue-400 transition-colors flex-shrink-0"
+          >
+            <Pencil className="w-4 h-4" />
+          </button>
+        )}
+        <button
+          onClick={e => { e.stopPropagation(); setComposeMode('duplicate'); }}
+          title="Duplicate"
+          className="text-white/20 hover:text-white transition-colors flex-shrink-0"
+        >
+          <Copy className="w-4 h-4" />
+        </button>
         {canCancel && (
           <button
             onClick={e => { e.stopPropagation(); if (confirm('Cancel this broadcast?')) cancelMutation.mutate(); }}
+            title="Cancel"
             className="text-white/20 hover:text-red-400 transition-colors flex-shrink-0"
           >
             <Ban className="w-4 h-4" />
+          </button>
+        )}
+        {canDelete && (
+          <button
+            onClick={e => { e.stopPropagation(); if (confirm('Permanently delete this broadcast?')) cancelMutation.mutate(); }}
+            title="Delete"
+            className="text-white/20 hover:text-red-400 transition-colors flex-shrink-0"
+          >
+            <Trash2 className="w-4 h-4" />
           </button>
         )}
         {expanded ? <ChevronUp className="w-4 h-4 text-white/30 flex-shrink-0" /> : <ChevronDown className="w-4 h-4 text-white/30 flex-shrink-0" />}
@@ -448,6 +493,16 @@ function BroadcastRow({ item }: { item: Broadcast }) {
               ))}
             </div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {composeMode && (
+          <ComposeModal
+            onClose={() => setComposeMode(null)}
+            initialData={item}
+            editId={composeMode === 'edit' ? item._id : undefined}
+          />
         )}
       </AnimatePresence>
     </div>
