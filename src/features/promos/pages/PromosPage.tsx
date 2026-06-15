@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { useAdminAuthStore } from '../../../stores/auth.store';
+import ImageUpload from '../../../components/ImageUpload';
 
 const API = import.meta.env.VITE_API_URL ?? 'https://api.jothisham.com/api/v1';
 const hdr = () => ({ Authorization: `Bearer ${useAdminAuthStore.getState().accessToken}` });
@@ -334,9 +335,12 @@ export default function PromosPage() {
                     className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
                     placeholder="Dismiss button text" />
                 </div>
-                <input value={form.imageUrl} onChange={e => set('imageUrl', e.target.value)}
-                  className="w-full bg-gray-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
-                  placeholder="Image URL (shared across all languages)" />
+                <ImageUpload
+                  label="Image (shared across all languages)"
+                  value={form.imageUrl}
+                  onChange={url => set('imageUrl', url)}
+                  aspectClassName="aspect-[16/9]"
+                />
               </section>
 
               {/* Design */}
@@ -447,7 +451,7 @@ export default function PromosPage() {
                 style={{ backgroundColor: form.backgroundColor }}>
                 <div className="h-1 w-full" style={{ backgroundColor: form.accentColor }} />
                 {form.imageUrl && (
-                  <img src={form.imageUrl} alt="" className="w-full h-28 object-cover" />
+                  <img src={form.imageUrl} alt="" className="w-full aspect-[16/9] object-cover" />
                 )}
                 <div className="p-4">
                   {enContent.subtitle && (

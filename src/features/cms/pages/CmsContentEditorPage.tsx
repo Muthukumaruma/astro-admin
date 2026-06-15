@@ -5,7 +5,7 @@ import axios from 'axios';
 import type { JSONContent } from '@tiptap/react';
 import { ArrowLeft, BookOpen } from 'lucide-react';
 import { API, hdr, CMS_SECTION, LANGS, LANG_LABELS, type Lang, type CmsCategory, type CmsSubCategory, type CmsContent } from '../api/cms.api';
-import CmsImageUpload from '../components/CmsImageUpload';
+import ImageUpload from '../../../components/ImageUpload';
 import TiptapEditor from '../components/TiptapEditor';
 
 export default function CmsContentEditorPage() {
@@ -143,7 +143,7 @@ export default function CmsContentEditorPage() {
             </div>
           </div>
 
-          <CmsImageUpload label="Cover image" value={coverImageUrl} onChange={setCoverImageUrl} />
+          <ImageUpload label="Cover image" value={coverImageUrl} onChange={setCoverImageUrl} />
 
           <div>
             <label className="text-xs text-white/50 block mb-1">Excerpt</label>

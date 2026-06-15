@@ -6,6 +6,8 @@ export type UserStatus = 'active' | 'suspended' | 'pending_verification';
 export type Language = 'en' | 'ta' | 'hi' | 'te' | 'ml' | 'kn';
 export type Theme = 'dark' | 'light';
 
+export type AdminRole = 'super_admin' | 'content_admin' | 'support_admin' | 'finance_admin';
+
 // ─── Planets ─────────────────────────────────────────────────────────────────
 
 export type PlanetId = 'SU' | 'MO' | 'MA' | 'ME' | 'JU' | 'VE' | 'SA' | 'RA' | 'KE';

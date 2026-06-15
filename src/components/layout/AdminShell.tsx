@@ -2,30 +2,33 @@ import { NavLink } from 'react-router-dom';
 import { useState } from 'react';
 import {
   LayoutDashboard, Users, Star, CreditCard,
-  Sparkles, Settings, LogOut, Shield, Bell, Layers, Megaphone, Menu, X, BookOpen,
+  Sparkles, Settings, LogOut, Shield, Bell, Layers, Megaphone, Menu, X, BookOpen, UserCog,
 } from 'lucide-react';
 import { useAdminAuthStore } from '../../stores/auth.store';
 import type { ReactNode } from 'react';
 
 const NAV = [
-  { label: 'Dashboard',     icon: LayoutDashboard, path: '/' },
-  { label: 'Users',         icon: Users,           path: '/users' },
-  { label: 'Astrologers',   icon: Star,            path: '/astrologers' },
-  { label: 'Plans',         icon: Layers,          path: '/plans' },
-  { label: 'Subscriptions', icon: CreditCard,      path: '/subscriptions' },
-  { label: 'Payments',      icon: CreditCard,      path: '/payments' },
-  { label: 'AI Usage',      icon: Sparkles,        path: '/ai-usage' },
-  { label: 'Jothisham Knowledge', icon: BookOpen,  path: '/jothisham-knowledge' },
-  { label: 'Books — Categories', icon: Layers,     path: '/cms/books/categories' },
-  { label: 'Books — Content', icon: BookOpen,      path: '/cms/books/content' },
-  { label: 'Books — Settings', icon: Settings,     path: '/cms/books/settings' },
-  { label: 'Promo Modals',  icon: Megaphone,       path: '/promos' },
-  { label: 'Notifications', icon: Bell,            path: '/notifications' },
-  { label: 'Settings',      icon: Settings,        path: '/settings' },
+  { label: 'Dashboard',     icon: LayoutDashboard, path: '/',                       permission: 'dashboard' },
+  { label: 'Users',         icon: Users,           path: '/users',                  permission: 'users' },
+  { label: 'Astrologers',   icon: Star,            path: '/astrologers',            permission: 'astrologers' },
+  { label: 'Plans',         icon: Layers,          path: '/plans',                  permission: 'plans' },
+  { label: 'Subscriptions', icon: CreditCard,      path: '/subscriptions',          permission: 'subscriptions' },
+  { label: 'Payments',      icon: CreditCard,      path: '/payments',               permission: 'payments' },
+  { label: 'AI Usage',      icon: Sparkles,        path: '/ai-usage',               permission: 'ai-usage' },
+  { label: 'Jothisham Knowledge', icon: BookOpen,  path: '/jothisham-knowledge',    permission: 'jothisham' },
+  { label: 'Books — Categories', icon: Layers,     path: '/cms/books/categories',   permission: 'cms' },
+  { label: 'Books — Content', icon: BookOpen,      path: '/cms/books/content',      permission: 'cms' },
+  { label: 'Books — Settings', icon: Settings,     path: '/cms/books/settings',     permission: 'cms' },
+  { label: 'Promo Modals',  icon: Megaphone,       path: '/promos',                 permission: 'promos' },
+  { label: 'Notifications', icon: Bell,            path: '/notifications',          permission: 'notifications' },
+  { label: 'Settings',      icon: Settings,        path: '/settings',               permission: 'settings' },
+  { label: 'Admins',        icon: UserCog,         path: '/admins',                 permission: 'admins' },
 ];
 
 function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
   const { logout, user } = useAdminAuthStore();
+  const permissions = user?.permissions;
+  const nav = permissions ? NAV.filter(item => permissions.includes(item.permission)) : NAV;
   return (
     <div className="flex flex-col h-full">
       {/* Brand */}
@@ -41,7 +44,7 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
 
       {/* Nav */}
       <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
-        {NAV.map(item => (
+        {nav.map(item => (
           <NavLink
             key={item.path}
             to={item.path}

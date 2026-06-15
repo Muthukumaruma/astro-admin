@@ -85,13 +85,6 @@ export interface CmsContent extends CmsContentSummary {
   publishedAt?: string | null;
 }
 
-export async function uploadCmsImage(file: File): Promise<string> {
-  const body = new FormData();
-  body.append('file', file);
-  const res = await axios.post(`${API}/admin/cms/upload`, body, { headers: hdr() });
-  return res.data.data.url as string;
-}
-
 export type CmsImportMode = 'auto' | 'text' | 'ocr';
 
 export interface CmsImportResult {

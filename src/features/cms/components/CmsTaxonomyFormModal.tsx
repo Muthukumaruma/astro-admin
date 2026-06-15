@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { LANGS, LANG_LABELS, type Lang, type LangMap } from '../api/cms.api';
-import CmsImageUpload from './CmsImageUpload';
+import ImageUpload from '../../../components/ImageUpload';
 
 export interface CmsTaxonomyFormValue {
   slug: string;
@@ -37,7 +37,7 @@ export default function CmsTaxonomyFormModal({ title, initial, saving, onSave, o
       <div className="bg-gray-900 border border-white/10 rounded-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto p-6 space-y-4">
         <h2 className="text-base font-bold text-white sticky top-0 bg-gray-900 pb-2">{title}</h2>
 
-        <CmsImageUpload label="Card image" value={form.cardImageUrl} onChange={url => set('cardImageUrl', url)} />
+        <ImageUpload label="Card image" value={form.cardImageUrl} onChange={url => set('cardImageUrl', url)} />
 
         {/* Language tabs */}
         <div className="space-y-3">

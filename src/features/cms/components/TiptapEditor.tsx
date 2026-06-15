@@ -10,7 +10,8 @@ import {
   List, ListOrdered, Quote, AlignLeft, AlignCenter, AlignRight, AlignJustify,
   Link as LinkIcon, Image as ImageIcon, Undo, Redo, FileUp, Loader2,
 } from 'lucide-react';
-import { uploadCmsImage, importCmsContent, type CmsImportMode, type Lang } from '../api/cms.api';
+import { importCmsContent, type CmsImportMode, type Lang } from '../api/cms.api';
+import { uploadAdminImage } from '../../../services/upload.api';
 import { ResizableImage } from './resizable-image';
 
 interface TiptapEditorProps {
@@ -74,7 +75,7 @@ export default function TiptapEditor({ content, onChange, language = 'en' }: Tip
   async function insertImage(file: File) {
     if (!editor) return;
     try {
-      const url = await uploadCmsImage(file);
+      const url = await uploadAdminImage(file);
       editor.chain().focus().setImage({ src: url }).run();
     } catch {
       // upload failed — silently ignore, user can retry

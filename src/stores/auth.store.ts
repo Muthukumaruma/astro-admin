@@ -6,6 +6,8 @@ interface AdminUser {
   email: string;
   name: string;
   role: string;
+  adminRole?: string;
+  permissions?: string[];
 }
 
 interface AdminAuthState {

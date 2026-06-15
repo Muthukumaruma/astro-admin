@@ -19,6 +19,7 @@ const CmsSubCategoriesPage = lazy(() => import('./features/cms/pages/CmsSubCateg
 const CmsContentListPage   = lazy(() => import('./features/cms/pages/CmsContentListPage'));
 const CmsContentEditorPage = lazy(() => import('./features/cms/pages/CmsContentEditorPage'));
 const CmsSectionsPage      = lazy(() => import('./features/cms/pages/CmsSectionsPage'));
+const AdminsPage          = lazy(() => import('./features/admins/pages/AdminsPage'));
 const LoginPage      = lazy(() => import('./features/auth/AdminLoginPage'));
 
 export default function App() {
@@ -57,6 +58,7 @@ export default function App() {
           <Route path="/cms/books/content/new" element={<CmsContentEditorPage />} />
           <Route path="/cms/books/content/:id/edit" element={<CmsContentEditorPage />} />
           <Route path="/cms/books/settings" element={<CmsSectionsPage />} />
+          <Route path="/admins"         element={<AdminsPage />} />
           <Route path="*"             element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

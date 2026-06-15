@@ -1,27 +1,31 @@
 import { useRef, useState } from 'react';
-import { Image as ImageIcon, Loader2, X } from 'lucide-react';
-import { uploadCmsImage } from '../api/cms.api';
+import axios from 'axios';
+import { Image as ImageIcon, Loader2, X, FolderOpen } from 'lucide-react';
+import { uploadAdminImage } from '../services/upload.api';
+import ImageLibraryModal from './ImageLibraryModal';
 
-interface CmsImageUploadProps {
+interface ImageUploadProps {
   value: string;
   onChange: (url: string) => void;
   label?: string;
   aspectClassName?: string;
 }
 
-export default function CmsImageUpload({ value, onChange, label, aspectClassName = 'aspect-video' }: CmsImageUploadProps) {
+export default function ImageUpload({ value, onChange, label, aspectClassName = 'aspect-video' }: ImageUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
+  const [libraryOpen, setLibraryOpen] = useState(false);
 
   async function handleFile(file: File) {
     setError('');
     setUploading(true);
     try {
-      const url = await uploadCmsImage(file);
+      const url = await uploadAdminImage(file);
       onChange(url);
-    } catch {
-      setError('Upload failed — try a smaller image (max 5MB)');
+    } catch (err) {
+      const serverMessage = axios.isAxiosError(err) ? (err.response?.data as { error?: string } | undefined)?.error : undefined;
+      setError(serverMessage ?? 'Upload failed — try a smaller image (max 20MB)');
     } finally {
       setUploading(false);
     }
@@ -61,6 +65,14 @@ export default function CmsImageUpload({ value, onChange, label, aspectClassName
         )}
       </div>
 
+      <button
+        type="button"
+        onClick={() => setLibraryOpen(true)}
+        className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white transition-colors"
+      >
+        <FolderOpen className="w-3.5 h-3.5" /> Choose existing image
+      </button>
+
       <input
         ref={inputRef}
         type="file"
@@ -72,6 +84,13 @@ export default function CmsImageUpload({ value, onChange, label, aspectClassName
           e.target.value = '';
         }}
       />
+
+      {libraryOpen && (
+        <ImageLibraryModal
+          onSelect={url => { onChange(url); setLibraryOpen(false); }}
+          onClose={() => setLibraryOpen(false)}
+        />
+      )}
 
       {error && <p className="text-red-400 text-xs">{error}</p>}
     </div>
