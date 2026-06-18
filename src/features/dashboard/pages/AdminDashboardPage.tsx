@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { Users, Star, CreditCard, TrendingUp, UserPlus, UserCheck } from 'lucide-react';
+import { Users, Star, CreditCard, TrendingUp, UserPlus, UserCheck, Bell, Megaphone } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAdminAuthStore } from '../../../stores/auth.store';
 
@@ -92,6 +93,33 @@ export default function AdminDashboardPage() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Engagement quick-actions */}
+      <div>
+        <h3 className="text-white/50 text-xs font-semibold uppercase tracking-widest mb-3">Engagement</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Link to="/notifications"
+            className="group bg-white/5 border border-white/10 hover:border-red-500/30 hover:bg-red-500/5 rounded-2xl p-5 flex items-center gap-4 transition-all">
+            <div className="w-11 h-11 rounded-xl bg-red-500/20 flex items-center justify-center flex-shrink-0 group-hover:bg-red-500/30 transition-colors">
+              <Bell className="w-5 h-5 text-red-400" />
+            </div>
+            <div>
+              <p className="text-white font-semibold text-sm">Push Notifications</p>
+              <p className="text-white/40 text-xs mt-0.5">Schedule & send multilingual broadcasts</p>
+            </div>
+          </Link>
+          <Link to="/promos"
+            className="group bg-white/5 border border-white/10 hover:border-indigo-500/30 hover:bg-indigo-500/5 rounded-2xl p-5 flex items-center gap-4 transition-all">
+            <div className="w-11 h-11 rounded-xl bg-indigo-500/20 flex items-center justify-center flex-shrink-0 group-hover:bg-indigo-500/30 transition-colors">
+              <Megaphone className="w-5 h-5 text-indigo-400" />
+            </div>
+            <div>
+              <p className="text-white font-semibold text-sm">Promo Modals</p>
+              <p className="text-white/40 text-xs mt-0.5">Manage in-app promotional banners</p>
+            </div>
+          </Link>
+        </div>
       </div>
     </div>
   );

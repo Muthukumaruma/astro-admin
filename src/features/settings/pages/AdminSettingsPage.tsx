@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
-import { Camera, Shield, Wrench, Save, Sparkles } from 'lucide-react';
+import { Camera, Shield, Wrench, Save, Sparkles, Gift } from 'lucide-react';
 import { useAdminAuthStore } from '../../../stores/auth.store';
 
 const API = import.meta.env.VITE_API_URL ?? 'https://api.jothisham.com/api/v1';
@@ -32,6 +32,10 @@ interface AppConfig {
   screenshotBlockedScreens: string[];
   maintenanceMode:          boolean;
   jothishamAiEnabled:       boolean;
+  referralEnabled:          boolean;
+  referralRewardThreshold:  number;
+  referralRewardDays:       number;
+  referralRewardPlan:       string;
 }
 
 export default function AdminSettingsPage() {
@@ -45,11 +49,19 @@ export default function AdminSettingsPage() {
   const [screenshotBlockedScreens, setScreenshotBlockedScreens] = useState<string[] | null>(null);
   const [maintenanceMode,          setMaintenanceMode]          = useState<boolean | null>(null);
   const [jothishamAiEnabled,       setJothishamAiEnabled]       = useState<boolean | null>(null);
+  const [referralEnabled,          setReferralEnabled]          = useState<boolean | null>(null);
+  const [referralRewardThreshold,  setReferralRewardThreshold]  = useState<number | null>(null);
+  const [referralRewardDays,       setReferralRewardDays]       = useState<number | null>(null);
+  const [referralRewardPlan,       setReferralRewardPlan]       = useState<string | null>(null);
 
-  const currentAllow   = allowScreenshots         ?? cfg?.allowScreenshots         ?? true;
-  const currentBlocked = screenshotBlockedScreens ?? cfg?.screenshotBlockedScreens ?? [];
-  const currentMaint   = maintenanceMode          ?? cfg?.maintenanceMode          ?? false;
-  const currentJothisham = jothishamAiEnabled     ?? cfg?.jothishamAiEnabled       ?? false;
+  const currentAllow       = allowScreenshots         ?? cfg?.allowScreenshots         ?? true;
+  const currentBlocked     = screenshotBlockedScreens ?? cfg?.screenshotBlockedScreens ?? [];
+  const currentMaint       = maintenanceMode          ?? cfg?.maintenanceMode          ?? false;
+  const currentJothisham   = jothishamAiEnabled       ?? cfg?.jothishamAiEnabled       ?? false;
+  const currentReferral    = referralEnabled          ?? cfg?.referralEnabled          ?? false;
+  const currentThreshold   = referralRewardThreshold  ?? cfg?.referralRewardThreshold  ?? 5;
+  const currentRewardDays  = referralRewardDays       ?? cfg?.referralRewardDays       ?? 30;
+  const currentRewardPlan  = referralRewardPlan       ?? cfg?.referralRewardPlan       ?? 'pro';
 
   const saveMutation = useMutation({
     mutationFn: () => axios.put(`${API}/app-config`, {
@@ -57,6 +69,10 @@ export default function AdminSettingsPage() {
       screenshotBlockedScreens: currentBlocked,
       maintenanceMode:          currentMaint,
       jothishamAiEnabled:       currentJothisham,
+      referralEnabled:          currentReferral,
+      referralRewardThreshold:  currentThreshold,
+      referralRewardDays:       currentRewardDays,
+      referralRewardPlan:       currentRewardPlan,
     }, { headers: hdr() }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['app-config'] }); alert('✅ Saved'); },
   });
@@ -193,6 +209,91 @@ export default function AdminSettingsPage() {
         <p className="text-white/25 text-xs mt-3 px-1">
           Manage the astrology knowledge base (RAG corpus) used by Jothisham AI in <span className="text-white/40">Jothisham Knowledge</span>.
         </p>
+      </div>
+
+      {/* Referral Program */}
+      <div className="glass-card p-5 space-y-5">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center">
+            <Gift className="w-5 h-5 text-emerald-400" />
+          </div>
+          <div>
+            <h2 className="text-white font-semibold">Referral Program</h2>
+            <p className="text-white/40 text-xs">
+              Users share their code — when referred friends verify their account, the referrer earns free subscription days
+            </p>
+          </div>
+        </div>
+
+        {/* Enable toggle */}
+        <label className="flex items-center justify-between p-4 bg-white/5 rounded-xl cursor-pointer">
+          <div>
+            <p className="text-white text-sm font-medium">Enable referral program</p>
+            <p className="text-white/30 text-xs mt-0.5">
+              {currentReferral ? 'On — users can share referral codes and earn rewards' : 'Off — referral feature hidden from users'}
+            </p>
+          </div>
+          <div onClick={() => setReferralEnabled(!currentReferral)}
+            className={`w-11 h-6 rounded-full transition-colors cursor-pointer relative flex-shrink-0 ${currentReferral ? 'bg-emerald-500' : 'bg-white/10'}`}>
+            <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${currentReferral ? 'translate-x-5' : 'translate-x-0.5'}`} />
+          </div>
+        </label>
+
+        {/* Reward config */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider">
+              Referrals needed per reward
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={100}
+              value={currentThreshold}
+              onChange={e => setReferralRewardThreshold(Math.max(1, parseInt(e.target.value) || 1))}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-emerald-500/50"
+            />
+            <p className="text-white/25 text-xs">Every N verified referrals = 1 reward</p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider">
+              Reward days
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={365}
+              value={currentRewardDays}
+              onChange={e => setReferralRewardDays(Math.max(1, parseInt(e.target.value) || 1))}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-emerald-500/50"
+            />
+            <p className="text-white/25 text-xs">Free subscription days granted</p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider">
+              Reward plan
+            </label>
+            <select
+              value={currentRewardPlan}
+              onChange={e => setReferralRewardPlan(e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-emerald-500/50"
+            >
+              <option value="pro">Pro</option>
+              <option value="premium">Premium</option>
+              <option value="basic">Basic</option>
+            </select>
+            <p className="text-white/25 text-xs">Plan tier to grant as reward</p>
+          </div>
+        </div>
+
+        {/* Summary */}
+        <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
+          <p className="text-emerald-300 text-sm">
+            Current rule: Every <strong>{currentThreshold}</strong> verified referrals → <strong>{currentRewardDays} days</strong> of <strong className="capitalize">{currentRewardPlan}</strong> plan for free
+          </p>
+        </div>
       </div>
     </motion.div>
   );

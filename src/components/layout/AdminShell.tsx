@@ -7,28 +7,63 @@ import {
 import { useAdminAuthStore } from '../../stores/auth.store';
 import type { ReactNode } from 'react';
 
-const NAV = [
-  { label: 'Dashboard',     icon: LayoutDashboard, path: '/',                       permission: 'dashboard' },
-  { label: 'Users',         icon: Users,           path: '/users',                  permission: 'users' },
-  { label: 'Astrologers',   icon: Star,            path: '/astrologers',            permission: 'astrologers' },
-  { label: 'Plans',         icon: Layers,          path: '/plans',                  permission: 'plans' },
-  { label: 'Subscriptions', icon: CreditCard,      path: '/subscriptions',          permission: 'subscriptions' },
-  { label: 'Payments',      icon: CreditCard,      path: '/payments',               permission: 'payments' },
-  { label: 'AI Usage',      icon: Sparkles,        path: '/ai-usage',               permission: 'ai-usage' },
-  { label: 'Jothisham Knowledge', icon: BookOpen,  path: '/jothisham-knowledge',    permission: 'jothisham' },
-  { label: 'Books — Categories', icon: Layers,     path: '/cms/books/categories',   permission: 'cms' },
-  { label: 'Books — Content', icon: BookOpen,      path: '/cms/books/content',      permission: 'cms' },
-  { label: 'Books — Settings', icon: Settings,     path: '/cms/books/settings',     permission: 'cms' },
-  { label: 'Promo Modals',  icon: Megaphone,       path: '/promos',                 permission: 'promos' },
-  { label: 'Notifications', icon: Bell,            path: '/notifications',          permission: 'notifications' },
-  { label: 'Settings',      icon: Settings,        path: '/settings',               permission: 'settings' },
-  { label: 'Admins',        icon: UserCog,         path: '/admins',                 permission: 'admins' },
+type NavItem = { label: string; icon: React.ElementType; path: string; permission: string };
+type NavSection = { section: string; items: NavItem[] };
+
+const NAV_SECTIONS: NavSection[] = [
+  {
+    section: 'Overview',
+    items: [
+      { label: 'Dashboard',     icon: LayoutDashboard, path: '/',            permission: 'dashboard' },
+    ],
+  },
+  {
+    section: 'Users & Revenue',
+    items: [
+      { label: 'Users',         icon: Users,           path: '/users',       permission: 'users' },
+      { label: 'Astrologers',   icon: Star,            path: '/astrologers', permission: 'astrologers' },
+      { label: 'Plans',         icon: Layers,          path: '/plans',       permission: 'plans' },
+      { label: 'Subscriptions', icon: CreditCard,      path: '/subscriptions', permission: 'subscriptions' },
+      { label: 'Payments',      icon: CreditCard,      path: '/payments',    permission: 'payments' },
+      { label: 'AI Usage',      icon: Sparkles,        path: '/ai-usage',    permission: 'ai-usage' },
+    ],
+  },
+  {
+    section: 'Content',
+    items: [
+      { label: 'Jothisham Knowledge', icon: BookOpen, path: '/jothisham-knowledge', permission: 'jothisham' },
+      { label: 'Books — Categories',  icon: Layers,   path: '/cms/books/categories', permission: 'cms' },
+      { label: 'Books — Content',     icon: BookOpen, path: '/cms/books/content',    permission: 'cms' },
+      { label: 'Books — Settings',    icon: Settings, path: '/cms/books/settings',   permission: 'cms' },
+    ],
+  },
+  {
+    section: 'Engagement',
+    items: [
+      { label: 'Notifications', icon: Bell,      path: '/notifications', permission: 'notifications' },
+      { label: 'Promo Modals',  icon: Megaphone, path: '/promos',        permission: 'promos' },
+    ],
+  },
+  {
+    section: 'Admin',
+    items: [
+      { label: 'Settings', icon: Settings, path: '/settings', permission: 'settings' },
+      { label: 'Admins',   icon: UserCog,  path: '/admins',   permission: 'admins' },
+    ],
+  },
 ];
 
 function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
   const { logout, user } = useAdminAuthStore();
   const permissions = user?.permissions;
-  const nav = permissions ? NAV.filter(item => permissions.includes(item.permission)) : NAV;
+
+  const visibleSections = NAV_SECTIONS.map(sec => ({
+    ...sec,
+    items: permissions
+      ? sec.items.filter(item => permissions.includes(item.permission))
+      : sec.items,
+  })).filter(sec => sec.items.length > 0);
+
   return (
     <div className="flex flex-col h-full">
       {/* Brand */}
@@ -43,24 +78,33 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
-        {nav.map(item => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            end={item.path === '/'}
-            onClick={onNavClick}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                isActive
-                  ? 'text-white bg-red-600/20 border border-red-500/30'
-                  : 'text-white/50 hover:text-white hover:bg-white/5'
-              }`
-            }
-          >
-            <item.icon className="w-5 h-5 flex-shrink-0" />
-            {item.label}
-          </NavLink>
+      <nav className="flex-1 px-2 py-4 overflow-y-auto space-y-4">
+        {visibleSections.map(sec => (
+          <div key={sec.section}>
+            <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-widest text-white/20">
+              {sec.section}
+            </p>
+            <div className="space-y-0.5">
+              {sec.items.map(item => (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  end={item.path === '/'}
+                  onClick={onNavClick}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                      isActive
+                        ? 'text-white bg-red-600/20 border border-red-500/30'
+                        : 'text-white/50 hover:text-white hover:bg-white/5'
+                    }`
+                  }
+                >
+                  <item.icon className="w-5 h-5 flex-shrink-0" />
+                  {item.label}
+                </NavLink>
+              ))}
+            </div>
+          </div>
         ))}
       </nav>
 
