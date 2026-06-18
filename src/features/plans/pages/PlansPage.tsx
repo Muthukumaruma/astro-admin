@@ -34,6 +34,7 @@ interface Plan {
   _id: string; slug: string; name: string; description: string;
   price: number; currency: string; isFree: boolean; isActive: boolean;
   sortOrder: number; limits: PlanLimits;
+  yearlyEnabled: boolean; yearlyDiscountPercent: number;
   singleJathagamPrice?: number; singlePoruthamPrice?: number;
 }
 
@@ -127,7 +128,9 @@ const DEFAULT_LIMITS: PlanLimits = {
 
 const EMPTY: Omit<Plan, '_id'> = {
   slug: '', name: '', description: '', price: 0, currency: 'INR',
-  isFree: false, isActive: true, sortOrder: 0, limits: { ...DEFAULT_LIMITS },
+  isFree: false, isActive: true, sortOrder: 0,
+  yearlyEnabled: false, yearlyDiscountPercent: 0,
+  limits: { ...DEFAULT_LIMITS },
   singleJathagamPrice: 0, singlePoruthamPrice: 0,
 };
 
@@ -308,7 +311,14 @@ export default function PlansPage() {
                             <div className="text-right">
                               {plan.isFree
                                 ? <span className="text-green-400 font-bold text-sm">Free</span>
-                                : <span className="text-white font-bold">₹{plan.price}<span className="text-white/30 text-xs">/mo</span></span>
+                                : <>
+                                    <span className="text-white font-bold">₹{plan.price}<span className="text-white/30 text-xs">/mo</span></span>
+                                    {plan.yearlyEnabled && (
+                                      <div className="text-[10px] text-emerald-400 font-semibold mt-0.5">
+                                        🗓 +Yearly {plan.yearlyDiscountPercent > 0 ? `(${plan.yearlyDiscountPercent}% off)` : ''}
+                                      </div>
+                                    )}
+                                  </>
                               }
                             </div>
                           </div>
@@ -404,9 +414,9 @@ export default function PlansPage() {
                   placeholder="For regular users…" />
               </div>
 
-              <div className="grid grid-cols-3 gap-3 items-end">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-white/50 block mb-1">Price (₹/month)</label>
+                  <label className="text-xs text-white/50 block mb-1">Monthly Price (₹)</label>
                   <input type="number" value={form.price}
                     onChange={e => setForm(f => ({ ...f, price: +e.target.value }))}
                     className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white" />
@@ -417,13 +427,46 @@ export default function PlansPage() {
                     onChange={e => setForm(f => ({ ...f, sortOrder: +e.target.value }))}
                     className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white" />
                 </div>
-                <label className="flex items-center gap-2 cursor-pointer text-sm text-white/60 select-none pb-2">
-                  <input type="checkbox" checked={form.isFree}
-                    onChange={e => setForm(f => ({ ...f, isFree: e.target.checked }))}
-                    className="accent-indigo-500 w-4 h-4" />
-                  Free plan
-                </label>
               </div>
+
+              {/* Yearly billing */}
+              <div className="border border-white/10 rounded-xl p-4 space-y-3">
+                <label className="flex items-center justify-between cursor-pointer select-none">
+                  <div>
+                    <p className="text-sm font-medium text-white">Enable Yearly Billing</p>
+                    <p className="text-xs text-white/40 mt-0.5">Users can toggle Monthly / Yearly on the app</p>
+                  </div>
+                  <div
+                    onClick={() => setForm(f => ({ ...f, yearlyEnabled: !f.yearlyEnabled }))}
+                    className={`w-10 h-[22px] rounded-full transition-all duration-200 relative border cursor-pointer ${form.yearlyEnabled ? 'bg-indigo-500 border-indigo-400' : 'bg-white/15 border-white/20'}`}>
+                    <div className={`absolute top-[3px] w-4 h-4 rounded-full shadow-sm transition-transform duration-200 ${form.yearlyEnabled ? 'translate-x-5 bg-white' : 'translate-x-[3px] bg-white/80'}`} />
+                  </div>
+                </label>
+                {form.yearlyEnabled && (
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    <div>
+                      <label className="text-xs text-white/50 block mb-1">Discount % <span className="text-white/30">(e.g. 20 = 20% off)</span></label>
+                      <input type="number" min={0} max={80} value={form.yearlyDiscountPercent ?? 0}
+                        onChange={e => setForm(f => ({ ...f, yearlyDiscountPercent: +e.target.value }))}
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white" />
+                    </div>
+                    <div className="flex flex-col justify-end pb-2">
+                      <p className="text-xs text-white/40">Yearly price preview</p>
+                      <p className="text-lg font-bold text-emerald-400">
+                        ₹{Math.round(form.price * 12 * (1 - (form.yearlyDiscountPercent ?? 0) / 100))}<span className="text-white/30 text-xs">/yr</span>
+                      </p>
+                      <p className="text-[10px] text-white/30">≈ ₹{Math.round(form.price * (1 - (form.yearlyDiscountPercent ?? 0) / 100))}/mo</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <label className="flex items-center gap-2 cursor-pointer text-sm text-white/60 select-none">
+                <input type="checkbox" checked={form.isFree}
+                  onChange={e => setForm(f => ({ ...f, isFree: e.target.checked }))}
+                  className="accent-indigo-500 w-4 h-4" />
+                Free plan
+              </label>
 
               {/* ── Pay-per-item pricing (one-off purchases beyond the plan limit) ── */}
               <div className="grid grid-cols-2 gap-3">
