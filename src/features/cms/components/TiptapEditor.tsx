@@ -299,8 +299,8 @@ export default function TiptapEditor({ content, onChange, language = 'en' }: Tip
         </div>
       )}
 
-      {/* Editor surface */}
-      <div className="text-white">
+      {/* Editor surface — scrolls internally so the toolbar above stays put on long articles */}
+      <div className="text-white max-h-[65vh] overflow-y-auto">
         <EditorContent editor={editor} />
       </div>
     </div>

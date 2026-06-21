@@ -17,6 +17,7 @@ const JothishamKnowledgePage = lazy(() => import('./features/jothisham/pages/Jot
 const CmsCategoriesPage    = lazy(() => import('./features/cms/pages/CmsCategoriesPage'));
 const CmsSubCategoriesPage = lazy(() => import('./features/cms/pages/CmsSubCategoriesPage'));
 const CmsContentListPage   = lazy(() => import('./features/cms/pages/CmsContentListPage'));
+const CmsContentPriorityPage = lazy(() => import('./features/cms/pages/CmsContentPriorityPage'));
 const CmsContentEditorPage = lazy(() => import('./features/cms/pages/CmsContentEditorPage'));
 const CmsSectionsPage      = lazy(() => import('./features/cms/pages/CmsSectionsPage'));
 const AdminsPage          = lazy(() => import('./features/admins/pages/AdminsPage'));
@@ -55,6 +56,7 @@ export default function App() {
           <Route path="/cms/books/categories" element={<CmsCategoriesPage />} />
           <Route path="/cms/books/categories/:categoryId/subcategories" element={<CmsSubCategoriesPage />} />
           <Route path="/cms/books/content" element={<CmsContentListPage />} />
+          <Route path="/cms/books/content/priority" element={<CmsContentPriorityPage />} />
           <Route path="/cms/books/content/new" element={<CmsContentEditorPage />} />
           <Route path="/cms/books/content/:id/edit" element={<CmsContentEditorPage />} />
           <Route path="/cms/books/settings" element={<CmsSectionsPage />} />

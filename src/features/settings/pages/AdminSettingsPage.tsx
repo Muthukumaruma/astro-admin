@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
-import { Camera, Shield, Wrench, Save, Sparkles, Gift } from 'lucide-react';
+import { Camera, Shield, Wrench, Save, Sparkles, Gift, LogIn } from 'lucide-react';
 import { useAdminAuthStore } from '../../../stores/auth.store';
 
 const API = import.meta.env.VITE_API_URL ?? 'https://api.jothisham.com/api/v1';
@@ -27,6 +27,20 @@ const APP_SCREENS = [
 
 const GROUPS = [...new Set(APP_SCREENS.map(s => s.group))];
 
+// Guest-gated features — true = guests must log in to use this, false = open to guests without login
+const GUEST_GATES = [
+  { key: 'createHoroscope',          label: 'Create Jathagam' },
+  { key: 'marriageMatchingBasic',    label: 'Marriage Matching (Basic)' },
+  { key: 'marriageMatchingAdvanced', label: 'Marriage Matching (Advanced)' },
+  { key: 'balanHub',                 label: 'Balan Hub' },
+  { key: 'rasiBalan',                label: 'Rasi Balan' },
+  { key: 'veeduBalan',               label: 'Veedu Balan' },
+  { key: 'dailyHoroscope',           label: 'Daily Horoscope' },
+  { key: 'horai',                    label: 'Nalla Neram / Horai' },
+  { key: 'remedies',                 label: 'Remedies' },
+  { key: 'appointments',             label: 'Appointments' },
+];
+
 interface AppConfig {
   allowScreenshots:         boolean;
   screenshotBlockedScreens: string[];
@@ -36,6 +50,7 @@ interface AppConfig {
   referralRewardThreshold:  number;
   referralRewardDays:       number;
   referralRewardPlan:       string;
+  guestAccessGates:         Record<string, boolean>;
 }
 
 export default function AdminSettingsPage() {
@@ -53,6 +68,7 @@ export default function AdminSettingsPage() {
   const [referralRewardThreshold,  setReferralRewardThreshold]  = useState<number | null>(null);
   const [referralRewardDays,       setReferralRewardDays]       = useState<number | null>(null);
   const [referralRewardPlan,       setReferralRewardPlan]       = useState<string | null>(null);
+  const [guestAccessGates,         setGuestAccessGates]         = useState<Record<string, boolean> | null>(null);
 
   const currentAllow       = allowScreenshots         ?? cfg?.allowScreenshots         ?? true;
   const currentBlocked     = screenshotBlockedScreens ?? cfg?.screenshotBlockedScreens ?? [];
@@ -62,6 +78,7 @@ export default function AdminSettingsPage() {
   const currentThreshold   = referralRewardThreshold  ?? cfg?.referralRewardThreshold  ?? 5;
   const currentRewardDays  = referralRewardDays       ?? cfg?.referralRewardDays       ?? 30;
   const currentRewardPlan  = referralRewardPlan       ?? cfg?.referralRewardPlan       ?? 'pro';
+  const currentGates       = guestAccessGates         ?? cfg?.guestAccessGates         ?? {};
 
   const saveMutation = useMutation({
     mutationFn: () => axios.put(`${API}/app-config`, {
@@ -73,6 +90,7 @@ export default function AdminSettingsPage() {
       referralRewardThreshold:  currentThreshold,
       referralRewardDays:       currentRewardDays,
       referralRewardPlan:       currentRewardPlan,
+      guestAccessGates:         currentGates,
     }, { headers: hdr() }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['app-config'] }); alert('✅ Saved'); },
   });
@@ -80,6 +98,11 @@ export default function AdminSettingsPage() {
   function toggleScreen(key: string) {
     const cur = screenshotBlockedScreens ?? cfg?.screenshotBlockedScreens ?? [];
     setScreenshotBlockedScreens(cur.includes(key) ? cur.filter(k => k !== key) : [...cur, key]);
+  }
+
+  function toggleGuestGate(key: string) {
+    const cur = guestAccessGates ?? cfg?.guestAccessGates ?? {};
+    setGuestAccessGates({ ...cur, [key]: !(cur[key] ?? true) });
   }
 
   if (isLoading) return <div className="p-8 text-white/40">Loading…</div>;
@@ -209,6 +232,40 @@ export default function AdminSettingsPage() {
         <p className="text-white/25 text-xs mt-3 px-1">
           Manage the astrology knowledge base (RAG corpus) used by Jothisham AI in <span className="text-white/40">Jothisham Knowledge</span>.
         </p>
+      </div>
+
+      {/* Guest Access */}
+      <div className="glass-card p-5 space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-sky-500/15 flex items-center justify-center">
+            <LogIn className="w-5 h-5 text-sky-400" />
+          </div>
+          <div>
+            <h2 className="text-white font-semibold">Guest Access</h2>
+            <p className="text-white/40 text-xs">
+              Guests can browse every page without an account. Toggle which actions still require login —
+              off means guests can use that feature without signing in.
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {GUEST_GATES.map(g => {
+            const requiresLogin = currentGates[g.key] ?? true;
+            return (
+              <label key={g.key}
+                className="flex items-center justify-between px-4 py-3 rounded-xl cursor-pointer border border-white/5 bg-white/3 hover:bg-white/5 transition-colors">
+                <div>
+                  <p className="text-sm text-white/80">{g.label}</p>
+                  <p className="text-white/25 text-xs">{requiresLogin ? 'Login required' : 'Open to guests'}</p>
+                </div>
+                <div onClick={() => toggleGuestGate(g.key)}
+                  className={`w-11 h-6 rounded-full transition-colors cursor-pointer relative flex-shrink-0 ${requiresLogin ? 'bg-sky-500' : 'bg-white/10'}`}>
+                  <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${requiresLogin ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                </div>
+              </label>
+            );
+          })}
+        </div>
       </div>
 
       {/* Referral Program */}

@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 import { useState } from 'react';
 import {
   LayoutDashboard, Users, Star, CreditCard,
-  Sparkles, Settings, LogOut, Shield, Bell, Layers, Megaphone, Menu, X, BookOpen, UserCog,
+  Sparkles, Settings, LogOut, Shield, Bell, Layers, Megaphone, Menu, X, BookOpen, UserCog, ArrowUpDown,
 } from 'lucide-react';
 import { useAdminAuthStore } from '../../stores/auth.store';
 import type { ReactNode } from 'react';
@@ -34,6 +34,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: 'Jothisham Knowledge', icon: BookOpen, path: '/jothisham-knowledge', permission: 'jothisham' },
       { label: 'Books — Categories',  icon: Layers,   path: '/cms/books/categories', permission: 'cms' },
       { label: 'Books — Content',     icon: BookOpen, path: '/cms/books/content',    permission: 'cms' },
+      { label: 'Books — Priority',    icon: ArrowUpDown, path: '/cms/books/content/priority', permission: 'cms' },
       { label: 'Books — Settings',    icon: Settings, path: '/cms/books/settings',   permission: 'cms' },
     ],
   },

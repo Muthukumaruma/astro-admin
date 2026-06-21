@@ -73,6 +73,7 @@ export interface CmsContentSummary {
   coverImageUrl?: string;
   excerpt?: string;
   isPublished: boolean;
+  sortOrder: number;
   viewCount: number;
   updatedAt: string;
 }
