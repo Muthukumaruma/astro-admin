@@ -8,7 +8,7 @@ const API = import.meta.env.VITE_API_URL ?? 'https://api.jothisham.com/api/v1';
 const hdr = () => ({ Authorization: `Bearer ${useAdminAuthStore.getState().accessToken}` });
 
 type Lang      = 'en' | 'ta' | 'hi' | 'te' | 'ml' | 'kn';
-type Audience  = 'all' | 'free' | 'paid' | 'new_users';
+type Audience  = 'all' | 'free' | 'paid' | 'new_users' | 'guest';
 type Frequency = 'once' | 'daily' | 'session' | 'always';
 type CtaAction = 'navigate' | 'external_url' | 'upgrade';
 
@@ -109,6 +109,7 @@ const WIDGET_TEMPLATE: Omit<Promo, '_id'> = {
 const AUDIENCE_LABELS: Record<Audience, string> = {
   all: 'All Users', free: 'Free Users Only',
   paid: 'Paid Users Only', new_users: 'New Users (last 7 days)',
+  guest: 'Guests Only (not logged in)',
 };
 const FREQ_LABELS: Record<Frequency, string> = {
   once: 'Once ever', daily: 'Once per day', session: 'Once per session', always: 'Always',
