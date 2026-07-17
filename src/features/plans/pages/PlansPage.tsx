@@ -23,6 +23,7 @@ interface PlanLimits {
   accessNallaNeram: boolean; accessRasiBalan: boolean; accessVeeduBalan: boolean;
   // Other
   accessPdfDownload: boolean; accessReminders: boolean; accessAiFeatures: boolean;
+  accessPrasannaJothidam: boolean;
   // Counts
   jathagamCount: number; basicPoruthamCount: number; advancedPoruthamCount: number;
   muhurtamSearchCount: number; rasiBalanSearchCount: number;
@@ -90,6 +91,13 @@ const ACCESS_SECTIONS: Section[] = [
       { key: 'accessAiFeatures',  label: 'AI Features',   bool: true },
     ],
   },
+  {
+    title: 'Prasanna Jothidam',
+    icon: '✨',
+    fields: [
+      { key: 'accessPrasannaJothidam', label: 'Prasanna Jothidam module', bool: true },
+    ],
+  },
 ];
 
 // Flat list for "Enable All / Disable All" and card display
@@ -119,6 +127,7 @@ const DEFAULT_LIMITS: PlanLimits = {
   accessNallaNeram: true, accessRasiBalan: false, accessVeeduBalan: false,
   // Other
   accessPdfDownload: false, accessReminders: false, accessAiFeatures: false,
+  accessPrasannaJothidam: false,
   // Counts
   jathagamCount: 0, basicPoruthamCount: 0, advancedPoruthamCount: 0,
   muhurtamSearchCount: 0, rasiBalanSearchCount: 0,

@@ -1,6 +1,7 @@
 ﻿import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
+import { toast } from 'sonner';
 import { useAdminAuthStore } from '../../../stores/auth.store';
 
 const API = import.meta.env.VITE_API_URL ?? 'https://api.jothisham.com/api/v1';
@@ -41,6 +42,10 @@ export default function SubscriptionsPage() {
     mutationFn: ({ userId, planSlug }: { userId: string; planSlug: string }) =>
       axios.patch(`${API}/subscriptions/admin/${userId}/override`, { planSlug }, { headers: authHeaders() }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-subs'] }); setSelected(null); },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.error ?? err?.message ?? 'Failed to override plan';
+      toast.error(msg);
+    },
   });
 
   const rows = data?.data ?? [];
