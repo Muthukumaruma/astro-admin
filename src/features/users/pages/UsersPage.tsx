@@ -12,6 +12,31 @@ interface User {
   status: 'active' | 'suspended' | 'pending_verification';
   isEmailVerified: boolean; userType: string; createdAt: string;
   subscription: { planSlug: string; status: string; provider: string };
+  lastPlatform?: 'web' | 'android' | 'ios';
+  lastAppVersion?: string;
+  lastDeviceModel?: string;
+  lastActiveAt?: string;
+  referralCode?: string;
+  referredBy?: string;
+  referralCount?: number;
+}
+
+const PLATFORM_LABEL: Record<string, string> = { web: 'Web', android: 'Android', ios: 'iOS' };
+
+function DeviceInfo({ u }: { u: User }) {
+  if (!u.lastPlatform) return <span className="text-white/20 text-xs">—</span>;
+  return (
+    <div className="text-xs">
+      <p className="text-white/70">
+        {PLATFORM_LABEL[u.lastPlatform]}
+        {u.lastAppVersion ? ` · v${u.lastAppVersion}` : ''}
+      </p>
+      {u.lastDeviceModel && <p className="text-white/30">{u.lastDeviceModel}</p>}
+      {u.lastActiveAt && (
+        <p className="text-white/20">Active {new Date(u.lastActiveAt).toLocaleDateString('en-IN')}</p>
+      )}
+    </div>
+  );
 }
 
 const PLAN_COLORS: Record<string, string> = {
@@ -89,6 +114,7 @@ export default function UsersPage() {
                     <th className="text-left px-4 py-3 font-medium">User</th>
                     <th className="text-left px-4 py-3 font-medium">Plan</th>
                     <th className="text-left px-4 py-3 font-medium">Status</th>
+                    <th className="text-left px-4 py-3 font-medium">Device</th>
                     <th className="text-left px-4 py-3 font-medium">Joined</th>
                     <th className="px-4 py-3" />
                   </tr>
@@ -115,6 +141,9 @@ export default function UsersPage() {
                         }`}>
                           {u.status}
                         </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <DeviceInfo u={u} />
                       </td>
                       <td className="px-4 py-3 text-white/40 text-xs">
                         {new Date(u.createdAt).toLocaleDateString('en-IN')}
@@ -157,6 +186,11 @@ export default function UsersPage() {
                       }`}>
                         {u.status}
                       </span>
+                      {u.lastPlatform && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/10 text-white/50">
+                          {PLATFORM_LABEL[u.lastPlatform]}{u.lastAppVersion ? ` v${u.lastAppVersion}` : ''}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <button

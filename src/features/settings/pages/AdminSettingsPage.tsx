@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
-import { Camera, Shield, Wrench, Save, Sparkles, Gift, LogIn } from 'lucide-react';
+import { Camera, Shield, Wrench, Save, Sparkles, Gift, LogIn, ArrowUpCircle } from 'lucide-react';
 import { useAdminAuthStore } from '../../../stores/auth.store';
 
 const API = import.meta.env.VITE_API_URL ?? 'https://api.jothisham.com/api/v1';
@@ -51,6 +51,8 @@ interface AppConfig {
   referralRewardDays:       number;
   referralRewardPlan:       string;
   guestAccessGates:         Record<string, boolean>;
+  minAppVersion:            { android: string; ios: string };
+  updateUrl:                { android: string; ios: string };
 }
 
 export default function AdminSettingsPage() {
@@ -69,6 +71,8 @@ export default function AdminSettingsPage() {
   const [referralRewardDays,       setReferralRewardDays]       = useState<number | null>(null);
   const [referralRewardPlan,       setReferralRewardPlan]       = useState<string | null>(null);
   const [guestAccessGates,         setGuestAccessGates]         = useState<Record<string, boolean> | null>(null);
+  const [minAppVersion,            setMinAppVersion]            = useState<{ android: string; ios: string } | null>(null);
+  const [updateUrl,                setUpdateUrl]                = useState<{ android: string; ios: string } | null>(null);
 
   const currentAllow       = allowScreenshots         ?? cfg?.allowScreenshots         ?? true;
   const currentBlocked     = screenshotBlockedScreens ?? cfg?.screenshotBlockedScreens ?? [];
@@ -79,6 +83,8 @@ export default function AdminSettingsPage() {
   const currentRewardDays  = referralRewardDays       ?? cfg?.referralRewardDays       ?? 30;
   const currentRewardPlan  = referralRewardPlan       ?? cfg?.referralRewardPlan       ?? 'pro';
   const currentGates       = guestAccessGates         ?? cfg?.guestAccessGates         ?? {};
+  const currentMinVersion  = minAppVersion            ?? cfg?.minAppVersion            ?? { android: '0.0.0', ios: '0.0.0' };
+  const currentUpdateUrl   = updateUrl                ?? cfg?.updateUrl                ?? { android: '', ios: '' };
 
   const saveMutation = useMutation({
     mutationFn: () => axios.put(`${API}/app-config`, {
@@ -91,6 +97,8 @@ export default function AdminSettingsPage() {
       referralRewardDays:       currentRewardDays,
       referralRewardPlan:       currentRewardPlan,
       guestAccessGates:         currentGates,
+      minAppVersion:            currentMinVersion,
+      updateUrl:                currentUpdateUrl,
     }, { headers: hdr() }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['app-config'] }); alert('✅ Saved'); },
   });
@@ -178,6 +186,67 @@ export default function AdminSettingsPage() {
               </div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Force Update */}
+      <div className="glass-card p-5 space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-rose-500/15 flex items-center justify-center">
+            <ArrowUpCircle className="w-5 h-5 text-rose-400" />
+          </div>
+          <div>
+            <h2 className="text-white font-semibold">Force Update</h2>
+            <p className="text-white/40 text-xs">
+              Block app versions below this number with an "update required" screen. Leave at 0.0.0 to disable.
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider">
+              Android — min version
+            </label>
+            <input
+              type="text"
+              value={currentMinVersion.android}
+              onChange={e => setMinAppVersion({ ...currentMinVersion, android: e.target.value })}
+              placeholder="0.0.0"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm font-mono focus:outline-none focus:border-rose-500/50"
+            />
+            <input
+              type="text"
+              value={currentUpdateUrl.android}
+              onChange={e => setUpdateUrl({ ...currentUpdateUrl, android: e.target.value })}
+              placeholder="Play Store URL"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white/70 text-xs focus:outline-none focus:border-rose-500/50"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider">
+              iOS — min version
+            </label>
+            <input
+              type="text"
+              value={currentMinVersion.ios}
+              onChange={e => setMinAppVersion({ ...currentMinVersion, ios: e.target.value })}
+              placeholder="0.0.0"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm font-mono focus:outline-none focus:border-rose-500/50"
+            />
+            <input
+              type="text"
+              value={currentUpdateUrl.ios}
+              onChange={e => setUpdateUrl({ ...currentUpdateUrl, ios: e.target.value })}
+              placeholder="App Store URL"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white/70 text-xs focus:outline-none focus:border-rose-500/50"
+            />
+          </div>
+        </div>
+        <div className="p-4 rounded-xl border border-rose-500/20 bg-rose-500/5">
+          <p className="text-rose-300 text-sm">
+            Current rule: Android below <strong className="font-mono">{currentMinVersion.android}</strong>, iOS below{' '}
+            <strong className="font-mono">{currentMinVersion.ios}</strong> will be blocked and prompted to update.
+          </p>
         </div>
       </div>
 

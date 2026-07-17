@@ -1,7 +1,8 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { toast } from 'sonner';
+import { Search } from 'lucide-react';
 import { useAdminAuthStore } from '../../../stores/auth.store';
 
 const API = import.meta.env.VITE_API_URL ?? 'https://api.jothisham.com/api/v1';
@@ -9,9 +10,17 @@ function authHeaders() {
   return { Authorization: `Bearer ${useAdminAuthStore.getState().accessToken}` };
 }
 
+interface SubUser {
+  _id: string; name: string; email: string;
+  lastPlatform?: 'web' | 'android' | 'ios';
+  lastAppVersion?: string;
+  lastDeviceModel?: string;
+  lastActiveAt?: string;
+}
+
 interface SubRow {
   _id: string;
-  userId: { _id: string; name: string; email: string } | string;
+  userId: SubUser | string;
   planSlug: string;
   status: string;
   provider: string;
@@ -25,17 +34,34 @@ const STATUS_COLOR: Record<string, string> = {
   expired: 'text-red-400', past_due: 'text-orange-400',
 };
 
+const PLATFORM_LABEL: Record<string, string> = { web: 'Web', android: 'Android', ios: 'iOS' };
+
+const EMPTY_FILTERS = { planSlug: '', status: '', provider: '', platform: '' };
+
 export default function SubscriptionsPage() {
   const qc = useQueryClient();
   const [page, setPage]     = useState(1);
   const [selected, setSelected] = useState<SubRow | null>(null);
   const [override, setOverride]  = useState('');
 
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
+
   const { data, isLoading } = useQuery<{ data: SubRow[]; total: number; totalPages: number }>({
-    queryKey: ['admin-subs', page],
+    queryKey: ['admin-subs', page, filters, search],
     queryFn: () =>
-      axios.get(`${API}/subscriptions/admin?page=${page}&limit=20`, { headers: authHeaders() })
-        .then(r => r.data.data),
+      axios.get(`${API}/subscriptions/admin`, {
+        params: {
+          page, limit: 20,
+          planSlug: filters.planSlug || undefined,
+          status:   filters.status   || undefined,
+          provider: filters.provider || undefined,
+          platform: filters.platform || undefined,
+          search:   search || undefined,
+        },
+        headers: authHeaders(),
+      }).then(r => r.data.data),
   });
 
   const overrideMutation = useMutation({
@@ -51,18 +77,38 @@ export default function SubscriptionsPage() {
   const rows = data?.data ?? [];
   const totalPages = data?.totalPages ?? 1;
 
+  function userObj(sub: SubRow): SubUser | null {
+    return sub.userId && typeof sub.userId === 'object' ? sub.userId : null;
+  }
   function userName(sub: SubRow) {
-    if (sub.userId && typeof sub.userId === 'object') return sub.userId.name ?? '—';
-    return String(sub.userId ?? '—');
+    return userObj(sub)?.name ?? (typeof sub.userId === 'string' ? sub.userId : '—');
   }
   function userEmail(sub: SubRow) {
-    if (sub.userId && typeof sub.userId === 'object') return sub.userId.email ?? '';
-    return '';
+    return userObj(sub)?.email ?? '';
   }
   function userId(sub: SubRow) {
-    if (sub.userId && typeof sub.userId === 'object') return sub.userId._id;
-    return String(sub.userId ?? '');
+    return userObj(sub)?._id ?? String(sub.userId ?? '');
   }
+
+  function updateFilter(key: keyof typeof EMPTY_FILTERS, value: string) {
+    setFilters(f => ({ ...f, [key]: value }));
+    setPage(1);
+  }
+
+  function handleSearchSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSearch(searchInput);
+    setPage(1);
+  }
+
+  function clearFilters() {
+    setFilters(EMPTY_FILTERS);
+    setSearchInput('');
+    setSearch('');
+    setPage(1);
+  }
+
+  const hasActiveFilters = Object.values(filters).some(Boolean) || !!search;
 
   return (
     <div className="p-6 space-y-6">
@@ -73,6 +119,75 @@ export default function SubscriptionsPage() {
         </p>
       </div>
 
+      {/* Advanced filters */}
+      <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-wrap items-center gap-3">
+        <select
+          value={filters.planSlug}
+          onChange={e => updateFilter('planSlug', e.target.value)}
+          className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white/80"
+        >
+          <option value="">All plans</option>
+          <option value="free">Free</option>
+          <option value="pro">Pro</option>
+          <option value="premium">Premium</option>
+        </select>
+
+        <select
+          value={filters.status}
+          onChange={e => updateFilter('status', e.target.value)}
+          className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white/80"
+        >
+          <option value="">All statuses</option>
+          <option value="active">Active</option>
+          <option value="cancelled">Cancelled</option>
+          <option value="expired">Expired</option>
+          <option value="past_due">Past due</option>
+        </select>
+
+        <select
+          value={filters.provider}
+          onChange={e => updateFilter('provider', e.target.value)}
+          className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white/80"
+        >
+          <option value="">All providers</option>
+          <option value="razorpay">Razorpay</option>
+          <option value="free">Free</option>
+          <option value="referral">Referral</option>
+        </select>
+
+        <select
+          value={filters.platform}
+          onChange={e => updateFilter('platform', e.target.value)}
+          className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white/80"
+        >
+          <option value="">All platforms</option>
+          <option value="web">Web</option>
+          <option value="android">Android</option>
+          <option value="ios">iOS</option>
+        </select>
+
+        <form onSubmit={handleSearchSubmit} className="flex gap-2 flex-1 min-w-[200px]">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+            <input
+              value={searchInput}
+              onChange={e => setSearchInput(e.target.value)}
+              placeholder="Search name or email…"
+              className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder-white/20"
+            />
+          </div>
+          <button type="submit" className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm transition-colors">
+            Search
+          </button>
+        </form>
+
+        {hasActiveFilters && (
+          <button onClick={clearFilters} className="text-xs text-white/40 hover:text-white/70 transition-colors">
+            Clear filters
+          </button>
+        )}
+      </div>
+
       {isLoading ? (
         <p className="text-white/40">Loading…</p>
       ) : (
@@ -81,39 +196,55 @@ export default function SubscriptionsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/10">
-                  {['User', 'Plan', 'Status', 'Provider', 'Period End', 'Actions'].map(h => (
+                  {['User', 'Plan', 'Status', 'Provider', 'Device', 'Period End', 'Actions'].map(h => (
                     <th key={h} className="text-left px-4 py-3 text-white/40 text-xs font-semibold uppercase tracking-wider">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {rows.map(sub => (
-                  <tr key={sub._id} className="hover:bg-white/5 transition-colors">
-                    <td className="px-4 py-3">
-                      <p className="text-white font-medium">{userName(sub)}</p>
-                      <p className="text-white/40 text-xs">{userEmail(sub)}</p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-indigo-400 font-mono uppercase text-xs font-bold">{sub.planSlug}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs font-semibold ${STATUS_COLOR[sub.status] ?? 'text-white/50'}`}>
-                        {sub.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-white/50 text-xs">{sub.provider}</td>
-                    <td className="px-4 py-3 text-white/50 text-xs">
-                      {sub.currentPeriodEnd ? new Date(sub.currentPeriodEnd).toLocaleDateString() : '—'}
-                    </td>
-                    <td className="px-4 py-3">
-                      <button
-                        onClick={() => { setSelected(sub); setOverride(sub.planSlug); }}
-                        className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
-                        Override Plan
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {rows.map(sub => {
+                  const u = userObj(sub);
+                  return (
+                    <tr key={sub._id} className="hover:bg-white/5 transition-colors">
+                      <td className="px-4 py-3">
+                        <p className="text-white font-medium">{userName(sub)}</p>
+                        <p className="text-white/40 text-xs">{userEmail(sub)}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-indigo-400 font-mono uppercase text-xs font-bold">{sub.planSlug}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`text-xs font-semibold ${STATUS_COLOR[sub.status] ?? 'text-white/50'}`}>
+                          {sub.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-white/50 text-xs">{sub.provider}</td>
+                      <td className="px-4 py-3 text-xs">
+                        {u?.lastPlatform ? (
+                          <div>
+                            <p className="text-white/70">
+                              {PLATFORM_LABEL[u.lastPlatform]}
+                              {u.lastAppVersion ? ` · v${u.lastAppVersion}` : ''}
+                            </p>
+                            {u.lastDeviceModel && <p className="text-white/30">{u.lastDeviceModel}</p>}
+                          </div>
+                        ) : (
+                          <span className="text-white/20">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-white/50 text-xs">
+                        {sub.currentPeriodEnd ? new Date(sub.currentPeriodEnd).toLocaleDateString() : '—'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => { setSelected(sub); setOverride(sub.planSlug); }}
+                          className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
+                          Override Plan
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
