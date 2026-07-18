@@ -3,6 +3,7 @@ import { useState } from 'react';
 import {
   LayoutDashboard, Users, Star, CreditCard,
   Sparkles, Settings, LogOut, Shield, Bell, Layers, Megaphone, Menu, X, BookOpen, UserCog, ArrowUpDown,
+  Camera, ArrowUpCircle, Wrench, LogIn, Gift,
 } from 'lucide-react';
 import { useAdminAuthStore } from '../../stores/auth.store';
 import type { ReactNode } from 'react';
@@ -46,10 +47,20 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    section: 'Settings',
+    items: [
+      { label: 'Screenshot Security', icon: Camera,        path: '/settings/security',     permission: 'settings' },
+      { label: 'Force Update',        icon: ArrowUpCircle,  path: '/settings/force-update', permission: 'settings' },
+      { label: 'Maintenance Mode',    icon: Wrench,         path: '/settings/maintenance',  permission: 'settings' },
+      { label: 'Jothisham AI',        icon: Sparkles,       path: '/settings/ai',           permission: 'settings' },
+      { label: 'Guest Access',        icon: LogIn,          path: '/settings/guest-access', permission: 'settings' },
+      { label: 'Referral Program',    icon: Gift,           path: '/settings/referral',     permission: 'settings' },
+    ],
+  },
+  {
     section: 'Admin',
     items: [
-      { label: 'Settings', icon: Settings, path: '/settings', permission: 'settings' },
-      { label: 'Admins',   icon: UserCog,  path: '/admins',   permission: 'admins' },
+      { label: 'Admins', icon: UserCog, path: '/admins', permission: 'admins' },
     ],
   },
 ];

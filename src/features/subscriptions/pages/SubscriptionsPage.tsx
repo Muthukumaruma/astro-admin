@@ -24,6 +24,7 @@ interface SubRow {
   planSlug: string;
   status: string;
   provider: string;
+  billingInterval?: 'monthly' | 'yearly';
   currentPeriodEnd: string;
   providerSubscriptionId?: string;
   usage: Record<string, number>;
@@ -36,7 +37,7 @@ const STATUS_COLOR: Record<string, string> = {
 
 const PLATFORM_LABEL: Record<string, string> = { web: 'Web', android: 'Android', ios: 'iOS' };
 
-const EMPTY_FILTERS = { planSlug: '', status: '', provider: '', platform: '' };
+const EMPTY_FILTERS = { planSlug: '', status: '', provider: '', platform: '', billingInterval: '' };
 
 export default function SubscriptionsPage() {
   const qc = useQueryClient();
@@ -54,11 +55,12 @@ export default function SubscriptionsPage() {
       axios.get(`${API}/subscriptions/admin`, {
         params: {
           page, limit: 20,
-          planSlug: filters.planSlug || undefined,
-          status:   filters.status   || undefined,
-          provider: filters.provider || undefined,
-          platform: filters.platform || undefined,
-          search:   search || undefined,
+          planSlug:        filters.planSlug        || undefined,
+          status:          filters.status          || undefined,
+          provider:        filters.provider         || undefined,
+          platform:        filters.platform         || undefined,
+          billingInterval: filters.billingInterval  || undefined,
+          search:          search || undefined,
         },
         headers: authHeaders(),
       }).then(r => r.data.data),
@@ -166,6 +168,16 @@ export default function SubscriptionsPage() {
           <option value="ios">iOS</option>
         </select>
 
+        <select
+          value={filters.billingInterval}
+          onChange={e => updateFilter('billingInterval', e.target.value)}
+          className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white/80"
+        >
+          <option value="">Monthly & yearly</option>
+          <option value="monthly">Monthly</option>
+          <option value="yearly">Yearly</option>
+        </select>
+
         <form onSubmit={handleSearchSubmit} className="flex gap-2 flex-1 min-w-[200px]">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
@@ -196,7 +208,7 @@ export default function SubscriptionsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/10">
-                  {['User', 'Plan', 'Status', 'Provider', 'Device', 'Period End', 'Actions'].map(h => (
+                  {['User', 'Plan', 'Billing', 'Status', 'Provider', 'Device', 'Period End', 'Actions'].map(h => (
                     <th key={h} className="text-left px-4 py-3 text-white/40 text-xs font-semibold uppercase tracking-wider">{h}</th>
                   ))}
                 </tr>
@@ -212,6 +224,17 @@ export default function SubscriptionsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-indigo-400 font-mono uppercase text-xs font-bold">{sub.planSlug}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {sub.planSlug !== 'free' && sub.billingInterval ? (
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                            sub.billingInterval === 'yearly' ? 'bg-amber-500/15 text-amber-300' : 'bg-white/10 text-white/50'
+                          }`}>
+                            {sub.billingInterval === 'yearly' ? 'Yearly' : 'Monthly'}
+                          </span>
+                        ) : (
+                          <span className="text-white/20 text-xs">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <span className={`text-xs font-semibold ${STATUS_COLOR[sub.status] ?? 'text-white/50'}`}>
