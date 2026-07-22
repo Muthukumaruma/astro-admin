@@ -17,6 +17,12 @@ export interface AppConfig {
   guestAccessGates:         Record<string, boolean>;
   minAppVersion:            { android: string; ios: string };
   updateUrl:                { android: string; ios: string };
+  aiMarketingEnabled:          boolean;
+  aiMarketingPrompt:           string;
+  aiMarketingTimeUTC:          string;
+  aiMarketingAudience:         string;
+  aiMarketingTargetScreen:     string;
+  aiMarketingLastGeneratedDate?: string;
 }
 
 export function useAppConfig() {

@@ -55,6 +55,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: 'Jothisham AI',        icon: Sparkles,       path: '/settings/ai',           permission: 'settings' },
       { label: 'Guest Access',        icon: LogIn,          path: '/settings/guest-access', permission: 'settings' },
       { label: 'Referral Program',    icon: Gift,           path: '/settings/referral',     permission: 'settings' },
+      { label: 'AI Marketing',        icon: Megaphone,      path: '/settings/ai-marketing', permission: 'settings' },
     ],
   },
   {

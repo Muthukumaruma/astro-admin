@@ -18,6 +18,7 @@ const MaintenanceSettingsPage = lazy(() => import('./features/settings/pages/Mai
 const AiSettingsPage          = lazy(() => import('./features/settings/pages/AiSettingsPage'));
 const GuestAccessSettingsPage = lazy(() => import('./features/settings/pages/GuestAccessSettingsPage'));
 const ReferralSettingsPage    = lazy(() => import('./features/settings/pages/ReferralSettingsPage'));
+const AiMarketingSettingsPage = lazy(() => import('./features/settings/pages/AiMarketingSettingsPage'));
 const JothishamKnowledgePage = lazy(() => import('./features/jothisham/pages/JothishamKnowledgePage'));
 const CmsCategoriesPage    = lazy(() => import('./features/cms/pages/CmsCategoriesPage'));
 const CmsSubCategoriesPage = lazy(() => import('./features/cms/pages/CmsSubCategoriesPage'));
@@ -62,6 +63,7 @@ export default function App() {
           <Route path="/settings/ai"            element={<AiSettingsPage />} />
           <Route path="/settings/guest-access"  element={<GuestAccessSettingsPage />} />
           <Route path="/settings/referral"      element={<ReferralSettingsPage />} />
+          <Route path="/settings/ai-marketing"  element={<AiMarketingSettingsPage />} />
           <Route path="/settings" element={<Navigate to="/settings/security" replace />} />
           <Route path="/jothisham-knowledge" element={<JothishamKnowledgePage />} />
           <Route path="/cms/books/categories" element={<CmsCategoriesPage />} />

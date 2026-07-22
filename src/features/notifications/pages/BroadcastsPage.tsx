@@ -27,6 +27,10 @@ interface Broadcast {
   contentSlug?:  string;
   deliverAtLocalTime?: boolean;
   scheduledAt:  string;
+  isRecurring?:         boolean;
+  recurrenceStartDate?: string;
+  recurrenceEndDate?:   string;
+  lastSentDate?:        string;
   status:       BroadcastStatus;
   sentCount:    number;
   failedCount:  number;
@@ -71,6 +75,11 @@ function toLocalDatetimeValue(d: Date) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+function toLocalDateValue(d: Date) {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 interface ComposeModalProps {
   onClose: () => void;
   /** Pre-fill the form from an existing broadcast (edit or duplicate). */
@@ -95,6 +104,14 @@ function ComposeModal({ onClose, initialData, editId }: ComposeModalProps) {
     return toLocalDatetimeValue(d);
   });
   const [saveAsDraft, setSaveAsDraft] = useState(editId ? initialData?.status === 'draft' : false);
+  const [isRecurring, setIsRecurring] = useState(initialData?.isRecurring ?? false);
+  const [recurrenceStartDate, setRecurrenceStartDate] = useState(() =>
+    initialData?.recurrenceStartDate ? toLocalDateValue(new Date(initialData.recurrenceStartDate)) : toLocalDateValue(new Date()));
+  const [recurrenceEndDate, setRecurrenceEndDate] = useState(() => {
+    if (initialData?.recurrenceEndDate) return toLocalDateValue(new Date(initialData.recurrenceEndDate));
+    const d = new Date(); d.setDate(d.getDate() + 7);
+    return toLocalDateValue(d);
+  });
 
   const createMutation = useMutation({
     mutationFn: (body: unknown) =>
@@ -143,6 +160,9 @@ function ComposeModal({ onClose, initialData, editId }: ComposeModalProps) {
       deliverAtLocalTime: deliverAtLocalTime,
       scheduledAt:        new Date(scheduledAt).toISOString(),
       status:             draft ? 'draft' : 'scheduled',
+      isRecurring,
+      recurrenceStartDate: isRecurring ? new Date(recurrenceStartDate).toISOString() : undefined,
+      recurrenceEndDate:   isRecurring ? new Date(recurrenceEndDate).toISOString()   : undefined,
     };
   }
 
@@ -287,10 +307,51 @@ function ComposeModal({ onClose, initialData, editId }: ComposeModalProps) {
             )}
           </div>
 
+          {/* Recurring */}
+          <div>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isRecurring}
+                onChange={e => setIsRecurring(e.target.checked)}
+                className="w-4 h-4 accent-red-500"
+              />
+              <div>
+                <span className="text-white/70 text-sm font-medium">Repeat daily within a date range</span>
+                <p className="text-white/30 text-xs mt-0.5">
+                  Sends automatically once a day, every day between the dates below, at the time set further down.
+                </p>
+              </div>
+            </label>
+            {isRecurring && (
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                <div>
+                  <label className="block text-white/40 text-xs mb-1">From</label>
+                  <input
+                    type="date"
+                    value={recurrenceStartDate}
+                    onChange={e => setRecurrenceStartDate(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-red-500/50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-white/40 text-xs mb-1">To</label>
+                  <input
+                    type="date"
+                    value={recurrenceEndDate}
+                    onChange={e => setRecurrenceEndDate(e.target.value)}
+                    min={recurrenceStartDate}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-red-500/50"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Schedule */}
           <div>
             <label className="block text-white/50 text-xs font-medium mb-2">
-              Schedule Date &amp; Time
+              {isRecurring ? 'Daily Send Time' : 'Schedule Date & Time'}
               <span className="text-white/30 ml-2">
                 (your local time: {Intl.DateTimeFormat().resolvedOptions().timeZone})
               </span>
@@ -415,7 +476,20 @@ function BroadcastRow({ item }: { item: Broadcast }) {
         </div>
         <div className="text-right flex-shrink-0 hidden sm:block">
           <p className="text-white/50 text-xs">{AUDIENCE_LABELS[item.audience]}</p>
-          <p className="text-white/30 text-xs">{format(new Date(item.scheduledAt), 'dd MMM yyyy HH:mm')}</p>
+          {item.isRecurring ? (
+            <>
+              <p className="text-amber-400/80 text-xs">
+                🔁 Daily {format(new Date(item.scheduledAt), 'HH:mm')}
+              </p>
+              <p className="text-white/30 text-[10px]">
+                {item.recurrenceStartDate && format(new Date(item.recurrenceStartDate), 'dd MMM')}
+                {' – '}
+                {item.recurrenceEndDate && format(new Date(item.recurrenceEndDate), 'dd MMM yyyy')}
+              </p>
+            </>
+          ) : (
+            <p className="text-white/30 text-xs">{format(new Date(item.scheduledAt), 'dd MMM yyyy HH:mm')}</p>
+          )}
         </div>
         {item.status === 'sent' && (
           <div className="text-right flex-shrink-0">
