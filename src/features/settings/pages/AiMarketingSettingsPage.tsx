@@ -60,7 +60,7 @@ export default function AiMarketingSettingsPage() {
         <div>
           <h1 className="text-2xl font-bold text-white">AI Marketing</h1>
           <p className="text-white/40 text-sm mt-1">
-            Gemini generates and sends a fresh push notification up to 3 times a day, in all 6 languages
+            AI generates and sends a fresh push notification up to 3 times a day, in all 6 languages
           </p>
         </div>
         <button
@@ -107,7 +107,7 @@ export default function AiMarketingSettingsPage() {
 
         <div className="space-y-2">
           <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider">
-            Theme / Prompt for Gemini
+            Theme / Prompt for AI
           </label>
           <textarea
             rows={3}
@@ -117,7 +117,7 @@ export default function AiMarketingSettingsPage() {
             className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm resize-none focus:outline-none focus:border-pink-500/50"
           />
           <p className="text-white/25 text-xs">
-            Gemini writes a fresh, different message each time from this theme — translated into all 6 languages automatically.
+            AI writes a fresh, different message each time from this theme — translated into all 6 languages automatically.
           </p>
         </div>
 
