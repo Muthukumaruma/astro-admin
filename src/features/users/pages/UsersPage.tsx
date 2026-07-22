@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, UserX, UserCheck, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, UserX, UserCheck, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import axios from 'axios';
 import { useAdminAuthStore } from '../../../stores/auth.store';
+import { exportToExcel } from '../../../utils/exportExcel';
 
 const API = import.meta.env.VITE_API_URL ?? 'https://api.jothisham.com/api/v1';
 const authHeaders = () => ({ Authorization: `Bearer ${useAdminAuthStore.getState().accessToken}` });
@@ -51,6 +52,7 @@ export default function UsersPage() {
   const [page, setPage]     = useState(1);
   const [search, setSearch] = useState('');
   const [q, setQ]           = useState('');
+  const [exporting, setExporting] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-users', page, q],
@@ -76,6 +78,42 @@ export default function UsersPage() {
     setPage(1);
   }
 
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const all: User[] = [];
+      let p = 1;
+      let pages = 1;
+      do {
+        const res = await axios.get(`${API}/admin/users`, {
+          params: { page: p, limit: 50, search: q || undefined },
+          headers: authHeaders(),
+        });
+        all.push(...(res.data.data.data as User[]));
+        pages = res.data.data.totalPages;
+        p++;
+      } while (p <= pages);
+
+      exportToExcel('users', all.map(u => ({
+        Name: u.name,
+        Email: u.email,
+        Status: u.status,
+        'Email Verified': u.isEmailVerified ? 'Yes' : 'No',
+        'User Type': u.userType,
+        Plan: u.subscription.planSlug,
+        Platform: u.lastPlatform ? PLATFORM_LABEL[u.lastPlatform] : '',
+        'App Version': u.lastAppVersion ?? '',
+        'Device Model': u.lastDeviceModel ?? '',
+        'Last Active': u.lastActiveAt ? new Date(u.lastActiveAt).toLocaleDateString('en-IN') : '',
+        'Referral Code': u.referralCode ?? '',
+        'Referral Count': u.referralCount ?? 0,
+        Joined: new Date(u.createdAt).toLocaleDateString('en-IN'),
+      })));
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -97,6 +135,14 @@ export default function UsersPage() {
             Search
           </button>
         </form>
+        <button
+          onClick={handleExport}
+          disabled={exporting}
+          className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 rounded-xl text-sm transition-colors disabled:opacity-50"
+        >
+          <Download className="w-4 h-4" />
+          {exporting ? 'Exporting…' : 'Export'}
+        </button>
       </div>
 
       <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">

@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { Search } from 'lucide-react';
+import { Search, Download } from 'lucide-react';
 import { useAdminAuthStore } from '../../../stores/auth.store';
+import { exportToExcel } from '../../../utils/exportExcel';
 
 const API = import.meta.env.VITE_API_URL ?? 'https://api.jothisham.com/api/v1';
 function authHeaders() {
@@ -48,6 +49,7 @@ export default function SubscriptionsPage() {
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
+  const [exporting, setExporting] = useState(false);
 
   const { data, isLoading } = useQuery<{ data: SubRow[]; total: number; totalPages: number }>({
     queryKey: ['admin-subs', page, filters, search],
@@ -111,6 +113,50 @@ export default function SubscriptionsPage() {
   }
 
   const hasActiveFilters = Object.values(filters).some(Boolean) || !!search;
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const all: SubRow[] = [];
+      let p = 1;
+      let pages = 1;
+      do {
+        const res = await axios.get(`${API}/subscriptions/admin`, {
+          params: {
+            page: p, limit: 50,
+            planSlug:        filters.planSlug        || undefined,
+            status:          filters.status          || undefined,
+            provider:        filters.provider         || undefined,
+            platform:        filters.platform         || undefined,
+            billingInterval: filters.billingInterval  || undefined,
+            search:          search || undefined,
+          },
+          headers: authHeaders(),
+        });
+        all.push(...(res.data.data.data as SubRow[]));
+        pages = res.data.data.totalPages;
+        p++;
+      } while (p <= pages);
+
+      exportToExcel('subscriptions', all.map(sub => {
+        const u = userObj(sub);
+        return {
+          Name: userName(sub),
+          Email: userEmail(sub),
+          Plan: sub.planSlug,
+          'Billing Interval': sub.billingInterval ?? '',
+          Status: sub.status,
+          Provider: sub.provider,
+          Platform: u?.lastPlatform ? PLATFORM_LABEL[u.lastPlatform] : '',
+          'App Version': u?.lastAppVersion ?? '',
+          'Device Model': u?.lastDeviceModel ?? '',
+          'Period End': sub.currentPeriodEnd ? new Date(sub.currentPeriodEnd).toLocaleDateString('en-IN') : '',
+        };
+      }));
+    } finally {
+      setExporting(false);
+    }
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -198,6 +244,15 @@ export default function SubscriptionsPage() {
             Clear filters
           </button>
         )}
+
+        <button
+          onClick={handleExport}
+          disabled={exporting}
+          className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 rounded-xl text-sm transition-colors disabled:opacity-50"
+        >
+          <Download className="w-4 h-4" />
+          {exporting ? 'Exporting…' : 'Export'}
+        </button>
       </div>
 
       {isLoading ? (
