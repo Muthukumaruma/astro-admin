@@ -43,9 +43,22 @@ const EMPTY: Omit<Promo, '_id'> = {
   targetAudience: 'all', displayFrequency: 'once', priority: 0, delaySeconds: 0, isActive: true,
 };
 
-const SCREENS = [
-  'Home','Charts','Porutham','Panchangam','Settings','Subscription',
-  'RasiBalan','VeeduBalan','NallaNeram','DailyHoroscope','BalanHub','WidgetGuide',
+// Exact React Navigation route names — must match a real screen name
+// somewhere in astro-mob's navigator tree (Root/Tabs/or any nested Stack).
+// PromoModal.tsx dispatches CommonActions.navigate({ name: ctaTarget }),
+// which searches the whole tree, so a nested-stack screen name works
+// directly without needing its parent tab/stack as an intermediate step.
+const SCREEN_GROUPS: { group: string; screens: string[] }[] = [
+  { group: 'Sign In / Sign Up', screens: ['Login', 'Register', 'ForgotPassword', 'OTPVerify', 'ResetPassword'] },
+  { group: 'Tabs', screens: ['Home', 'Charts', 'MarriageMatching', 'Panchangam', 'Settings'] },
+  { group: 'Home', screens: ['Dashboard', 'RasiBalan', 'VeeduBalan', 'NallaNeram', 'Remedies', 'DailyHoroscope', 'BalanHub', 'AI', 'WidgetGuide'] },
+  { group: 'Jathagam (Charts)', screens: ['HoroscopeList', 'CreateHoroscope', 'HoroscopeDetail', 'KocharamCompare'] },
+  { group: 'Marriage Matching', screens: ['PoruthamList', 'MarriageMatchingHome', 'PoruthamDetail'] },
+  { group: 'Panchangam', screens: ['PanchangamHome', 'PanchangamCalendar', 'Muhurtam', 'Horai'] },
+  { group: 'Books', screens: ['BooksCategories', 'BooksSubCategories', 'BooksContentList', 'BooksContentDetail', 'BooksBookmarks'] },
+  { group: 'Rasi Palan', screens: ['RasiPalanHome', 'RasiPalanDetail'] },
+  { group: 'Prasanna Jothidam', screens: ['PrasannaStudio', 'PrasannaQuestion', 'PrasannaSession', 'PrasannaResult', 'PrasannaHistory'] },
+  { group: 'Other', screens: ['Subscription', 'PhoneVerify'] },
 ];
 
 // Pre-filled widget promotion template (all 6 languages)
@@ -375,7 +388,11 @@ export default function PromosPage() {
                   <select value={form.ctaTarget} onChange={e => set('ctaTarget', e.target.value)}
                     className="w-full bg-gray-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white">
                     <option value="">Select screen…</option>
-                    {SCREENS.map(s => <option key={s} value={s} className="bg-gray-900 text-white">{s}</option>)}
+                    {SCREEN_GROUPS.map(g => (
+                      <optgroup key={g.group} label={g.group} className="bg-gray-900 text-white">
+                        {g.screens.map(s => <option key={s} value={s} className="bg-gray-900 text-white">{s}</option>)}
+                      </optgroup>
+                    ))}
                   </select>
                 ) : form.ctaAction === 'external_url' ? (
                   <input value={form.ctaTarget} onChange={e => set('ctaTarget', e.target.value)}
