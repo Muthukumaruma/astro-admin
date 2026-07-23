@@ -82,6 +82,28 @@ function toLocalDateValue(d: Date) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+// astro-push-job only runs 3x/day at these fixed UTC times (cron: 30 3,8,13 * * *).
+// Recurring broadcasts match time-of-day with a ±5 min window, so a time that
+// doesn't land near one of these would silently never fire — lock the picker
+// to these 3 options instead of a free time input.
+const RECURRING_UTC_SLOTS = [
+  { label: 'Morning',   utc: '02:30' },
+  { label: 'Afternoon', utc: '08:30' },
+  { label: 'Evening',   utc: '13:30' },
+];
+
+function dateAtUtcTime(dateStr: string, utcHHmm: string): Date {
+  const [hh, mm] = utcHHmm.split(':').map(Number);
+  const d = new Date(`${dateStr}T00:00:00.000Z`);
+  d.setUTCHours(hh ?? 0, mm ?? 0, 0, 0);
+  return d;
+}
+
+function formatUtcHHmm(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+}
+
 interface ComposeModalProps {
   onClose: () => void;
   /** Pre-fill the form from an existing broadcast (edit or duplicate). */
@@ -315,7 +337,15 @@ function ComposeModal({ onClose, initialData, editId }: ComposeModalProps) {
               <input
                 type="checkbox"
                 checked={isRecurring}
-                onChange={e => setIsRecurring(e.target.checked)}
+                onChange={e => {
+                  const checked = e.target.checked;
+                  setIsRecurring(checked);
+                  // Snap to a valid slot immediately — a leftover one-time
+                  // time-of-day might not land near any real job run.
+                  if (checked) {
+                    setScheduledAt(toLocalDatetimeValue(dateAtUtcTime(recurrenceStartDate, RECURRING_UTC_SLOTS[0]!.utc)));
+                  }
+                }}
                 className="w-4 h-4 accent-red-500"
               />
               <div>
@@ -358,15 +388,43 @@ function ComposeModal({ onClose, initialData, editId }: ComposeModalProps) {
                 (your local time: {Intl.DateTimeFormat().resolvedOptions().timeZone})
               </span>
             </label>
-            <input
-              type="datetime-local"
-              value={scheduledAt}
-              onChange={e => setScheduledAt(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-red-500/50"
-            />
-            <p className="text-white/30 text-xs mt-1">
-              UTC equivalent: {scheduledAt ? new Date(scheduledAt).toUTCString() : '—'}
-            </p>
+            {isRecurring ? (
+              <>
+                <p className="text-white/25 text-xs mb-2">
+                  Fixed to when the push job actually runs — pick one of the 3 real run times.
+                </p>
+                <div className="grid grid-cols-3 gap-3">
+                  {RECURRING_UTC_SLOTS.map(slot => {
+                    const slotDate   = dateAtUtcTime(recurrenceStartDate, slot.utc);
+                    const isSelected = !!scheduledAt && formatUtcHHmm(new Date(scheduledAt)) === slot.utc;
+                    return (
+                      <button
+                        type="button"
+                        key={slot.utc}
+                        onClick={() => setScheduledAt(toLocalDatetimeValue(dateAtUtcTime(recurrenceStartDate, slot.utc)))}
+                        className={`p-3 rounded-xl border text-left transition-colors ${isSelected ? 'border-red-500/60 bg-red-500/10' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
+                      >
+                        <p className="text-white text-sm font-medium">{slot.label}</p>
+                        <p className="text-white/40 text-xs">{slotDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                        <p className="text-white/25 text-[10px]">= {slot.utc} UTC</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <>
+                <input
+                  type="datetime-local"
+                  value={scheduledAt}
+                  onChange={e => setScheduledAt(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-red-500/50"
+                />
+                <p className="text-white/30 text-xs mt-1">
+                  UTC equivalent: {scheduledAt ? new Date(scheduledAt).toUTCString() : '—'}
+                </p>
+              </>
+            )}
 
             {/* Deliver at user's local time toggle */}
             <label className="flex items-center gap-3 cursor-pointer mt-3">
