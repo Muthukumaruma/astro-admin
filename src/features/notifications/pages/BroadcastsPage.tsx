@@ -32,8 +32,10 @@ interface Broadcast {
   recurrenceEndDate?:   string;
   lastSentDate?:        string;
   status:       BroadcastStatus;
-  sentCount:    number;
-  failedCount:  number;
+  sentCount:      number;
+  failedCount:    number;
+  deliveredCount?: number;
+  openedCount?:    number;
   createdAt:    string;
 }
 
@@ -566,6 +568,26 @@ function BroadcastRow({ item }: { item: Broadcast }) {
                 ) : null
               ))}
             </div>
+            {item.status === 'sent' && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
+                <div className="bg-white/5 rounded-lg p-3">
+                  <p className="text-white/30 text-[10px] font-semibold uppercase mb-1">Sent (FCM accepted)</p>
+                  <p className="text-green-400 text-sm font-semibold">{item.sentCount}</p>
+                </div>
+                <div className="bg-white/5 rounded-lg p-3">
+                  <p className="text-white/30 text-[10px] font-semibold uppercase mb-1">Failed</p>
+                  <p className="text-red-400 text-sm font-semibold">{item.failedCount}</p>
+                </div>
+                <div className="bg-white/5 rounded-lg p-3">
+                  <p className="text-white/30 text-[10px] font-semibold uppercase mb-1">Delivered to device</p>
+                  <p className="text-blue-400 text-sm font-semibold">{item.deliveredCount ?? 0}</p>
+                </div>
+                <div className="bg-white/5 rounded-lg p-3">
+                  <p className="text-white/30 text-[10px] font-semibold uppercase mb-1">Opened / tapped</p>
+                  <p className="text-purple-400 text-sm font-semibold">{item.openedCount ?? 0}</p>
+                </div>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
