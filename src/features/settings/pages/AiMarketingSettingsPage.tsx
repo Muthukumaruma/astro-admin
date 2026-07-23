@@ -10,11 +10,20 @@ const AUDIENCE_OPTIONS = [
   { value: 'plan_premium', label: 'Premium Plan' },
 ];
 
-const SLOT_LABELS = ['Morning', 'Afternoon', 'Evening'];
-const DEFAULT_TIMES_UTC = ['03:30', '08:30', '13:30'];
+// The Northflank job only runs at these 3 fixed UTC times (cron: 30 3,8,13 * * *
+// on astro-push-job's schedule prior to the 03:30 slot being introduced — keep
+// this in sync with that cron expression). A custom time here would silently
+// never fire since the job isn't running continuously, so slots are locked to
+// exactly these 3 options — admins can only toggle each on/off, not retime it.
+const FIXED_SLOTS = [
+  { label: 'Morning',   utc: '02:30' },
+  { label: 'Afternoon', utc: '08:30' },
+  { label: 'Evening',   utc: '13:30' },
+];
 
-// Converts between a stored UTC 'HH:mm' and the admin's actual browser-local
-// time-of-day, using the real local UTC offset — not a hardcoded timezone.
+// Converts a stored UTC 'HH:mm' to the admin's browser-local time, using the
+// real local UTC offset — not a hardcoded timezone. Display-only now that
+// slots are fixed.
 function shiftMinutes(hhmm: string, deltaMinutes: number): string {
   const [h, m] = hhmm.split(':').map(Number);
   const total = (((h ?? 0) * 60 + (m ?? 0) + deltaMinutes) % 1440 + 1440) % 1440;
@@ -22,34 +31,37 @@ function shiftMinutes(hhmm: string, deltaMinutes: number): string {
   const mm = String(total % 60).padStart(2, '0');
   return `${hh}:${mm}`;
 }
-
-// getTimezoneOffset() is minutes to ADD to local time to reach UTC (e.g. IST → -330)
 const LOCAL_OFFSET_MIN = -new Date().getTimezoneOffset();
 const utcToLocal = (utcHHmm: string) => shiftMinutes(utcHHmm, LOCAL_OFFSET_MIN);
-const localToUtc = (localHHmm: string) => shiftMinutes(localHHmm, -LOCAL_OFFSET_MIN);
+
+function to12h(hhmm: string): string {
+  const [h, m] = hhmm.split(':').map(Number);
+  const period = (h ?? 0) >= 12 ? 'PM' : 'AM';
+  const h12 = (h ?? 0) % 12 === 0 ? 12 : (h ?? 0) % 12;
+  return `${h12}:${String(m ?? 0).padStart(2, '0')} ${period}`;
+}
 
 export default function AiMarketingSettingsPage() {
   const { data: cfg, isLoading } = useAppConfig();
   const saveMutation = useSaveAppConfig();
 
-  const [enabled,      setEnabled]      = useState<boolean | null>(null);
-  const [prompt,       setPrompt]       = useState<string | null>(null);
-  const [timesLocal,   setTimesLocal]   = useState<string[] | null>(null);
-  const [audience,     setAudience]     = useState<string | null>(null);
-  const [targetScreen, setTargetScreen] = useState<string | null>(null);
+  const [enabled,       setEnabled]       = useState<boolean | null>(null);
+  const [prompt,        setPrompt]        = useState<string | null>(null);
+  const [enabledSlots,  setEnabledSlots]  = useState<string[] | null>(null);
+  const [audience,      setAudience]      = useState<string | null>(null);
+  const [targetScreen,  setTargetScreen]  = useState<string | null>(null);
 
-  const currentEnabled  = enabled  ?? cfg?.aiMarketingEnabled ?? false;
-  const currentPrompt   = prompt   ?? cfg?.aiMarketingPrompt  ?? '';
-  const currentTimesUTC0 = cfg?.aiMarketingTimesUTC?.length ? cfg.aiMarketingTimesUTC : DEFAULT_TIMES_UTC;
-  const currentTimesLocal = timesLocal ?? currentTimesUTC0.map(utcToLocal);
-  const currentTimesUTC   = currentTimesLocal.map(localToUtc);
+  const currentEnabled = enabled ?? cfg?.aiMarketingEnabled ?? false;
+  const currentPrompt  = prompt  ?? cfg?.aiMarketingPrompt  ?? '';
+  const currentTimesUTC = enabledSlots ?? (cfg?.aiMarketingTimesUTC?.length ? cfg.aiMarketingTimesUTC : FIXED_SLOTS.map(s => s.utc));
   const currentAudience = audience     ?? cfg?.aiMarketingAudience     ?? 'all';
   const currentScreen   = targetScreen ?? cfg?.aiMarketingTargetScreen ?? '';
 
-  function updateSlot(i: number, localValue: string) {
-    const next = [...currentTimesLocal];
-    next[i] = localValue;
-    setTimesLocal(next);
+  function toggleSlot(utc: string) {
+    const next = currentTimesUTC.includes(utc)
+      ? currentTimesUTC.filter(t => t !== utc)
+      : [...currentTimesUTC, utc];
+    setEnabledSlots(next);
   }
 
   if (isLoading) return <div className="p-8 text-white/40">Loading…</div>;
@@ -128,19 +140,26 @@ export default function AiMarketingSettingsPage() {
               ({Intl.DateTimeFormat().resolvedOptions().timeZone})
             </span>
           </label>
+          <p className="text-white/25 text-xs mb-3">
+            Fixed to when the push job actually runs — toggle a slot on/off, times can't be changed here.
+          </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {SLOT_LABELS.map((label, i) => (
-              <div key={label} className="space-y-1">
-                <label className="block text-white/40 text-xs">{label}</label>
-                <input
-                  type="time"
-                  value={currentTimesLocal[i] ?? ''}
-                  onChange={e => updateSlot(i, e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-pink-500/50"
-                />
-                <p className="text-white/25 text-xs">= {currentTimesUTC[i]} UTC</p>
-              </div>
-            ))}
+            {FIXED_SLOTS.map(slot => {
+              const isOn = currentTimesUTC.includes(slot.utc);
+              return (
+                <label key={slot.utc} className="flex items-center justify-between p-4 bg-white/5 rounded-xl cursor-pointer border border-white/10">
+                  <div>
+                    <p className="text-white text-sm font-medium">{slot.label}</p>
+                    <p className="text-white/40 text-xs">{to12h(utcToLocal(slot.utc))}</p>
+                    <p className="text-white/25 text-xs">= {slot.utc} UTC</p>
+                  </div>
+                  <div onClick={() => toggleSlot(slot.utc)}
+                    className={`w-11 h-6 rounded-full transition-colors cursor-pointer relative flex-shrink-0 ${isOn ? 'bg-pink-500' : 'bg-white/10'}`}>
+                    <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isOn ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  </div>
+                </label>
+              );
+            })}
           </div>
         </div>
 
@@ -179,7 +198,9 @@ export default function AiMarketingSettingsPage() {
         <div className="p-4 rounded-xl border border-pink-500/20 bg-pink-500/5">
           <p className="text-pink-300 text-sm">
             {currentEnabled
-              ? `Sends at ${SLOT_LABELS.map((l, i) => `${l} (${currentTimesLocal[i]})`).join(', ')} to ${AUDIENCE_OPTIONS.find(o => o.value === currentAudience)?.label ?? 'All Users'} — check the Push Notifications page to see each generated message in the history.`
+              ? (currentTimesUTC.length
+                  ? `Sends at ${FIXED_SLOTS.filter(s => currentTimesUTC.includes(s.utc)).map(s => `${s.label} (${to12h(utcToLocal(s.utc))})`).join(', ')} to ${AUDIENCE_OPTIONS.find(o => o.value === currentAudience)?.label ?? 'All Users'} — check the Push Notifications page to see each generated message in the history.`
+                  : 'No time slots enabled — turn on at least one above to actually send anything.')
               : 'Currently disabled — no messages will be generated or sent.'}
           </p>
         </div>
