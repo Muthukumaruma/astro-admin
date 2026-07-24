@@ -87,7 +87,7 @@ function toLocalDateValue(d: Date) {
 // doesn't land near one of these would silently never fire — lock the picker
 // to these 3 options instead of a free time input.
 const RECURRING_UTC_SLOTS = [
-  { label: 'Morning',   utc: '02:30' },
+  { label: 'Morning',   utc: '03:30' },
   { label: 'Afternoon', utc: '08:30' },
   { label: 'Evening',   utc: '13:30' },
 ];

@@ -16,7 +16,7 @@ const AUDIENCE_OPTIONS = [
 // never fire since the job isn't running continuously, so slots are locked to
 // exactly these 3 options — admins can only toggle each on/off, not retime it.
 const FIXED_SLOTS = [
-  { label: 'Morning',   utc: '02:30' },
+  { label: 'Morning',   utc: '03:30' },
   { label: 'Afternoon', utc: '08:30' },
   { label: 'Evening',   utc: '13:30' },
 ];
