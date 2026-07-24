@@ -29,6 +29,9 @@ interface PlanLimits {
   muhurtamSearchCount: number; rasiBalanSearchCount: number;
   reminderCount: number; pdfDownloadCount: number; aiTokensCount: number;
   advancedMatching: boolean;
+  // Per-Prasanna-category limits, keyed by category id. Missing entries =
+  // fully unlimited (see astro-BE prasanna-limit.service.ts).
+  prasannaLimits: Record<string, { dailyLimit: number; totalLimit: number; singlePrice: number }>;
 }
 
 interface Plan {
@@ -116,6 +119,24 @@ const COUNT_FIELDS: FieldDef[] = [
 
 const ALL_FIELDS = [...PAGE_ACCESS_FIELDS, ...COUNT_FIELDS];
 
+// Mirrors the category ids used in astro-mob's categories/manifest.ts and
+// astro-BE's rule-engine.ts — these three lists are independently maintained
+// per-codebase (no shared package), same as every other cross-cutting id in
+// this app; keep in sync by hand when a new category ships.
+const PRASANNA_CATEGORIES: { id: string; label: string }[] = [
+  { id: 'coin',   label: '🪙 Coin' },
+  { id: 'number', label: '🔢 Number' },
+  { id: 'dice',   label: '🎲 Dice' },
+  { id: 'flower', label: '🌸 Flower' },
+  { id: 'temple', label: '🛕 Temple' },
+  { id: 'cowrie', label: '🐚 Cowrie / Sangu' },
+  { id: 'parrot', label: '🦜 Parrot' },
+  { id: 'yesno',  label: '🙏 Yes / No' },
+  { id: 'time',   label: '🕐 Prashna (Time)' },
+];
+
+const DEFAULT_PRASANNA_LIMIT = { dailyLimit: -1, totalLimit: -1, singlePrice: 0 };
+
 const DEFAULT_LIMITS: PlanLimits = {
   // Jathagam
   accessJathagam: true, accessJathagamCreate: false, accessJathagamDetail: true, accessKocharamCompare: false,
@@ -133,6 +154,7 @@ const DEFAULT_LIMITS: PlanLimits = {
   muhurtamSearchCount: 0, rasiBalanSearchCount: 0,
   reminderCount: 0, pdfDownloadCount: 0, aiTokensCount: 0,
   advancedMatching: false,
+  prasannaLimits: {},
 };
 
 const EMPTY: Omit<Plan, '_id'> = {
@@ -258,6 +280,22 @@ export default function PlansPage() {
 
   function setLimitField(key: keyof PlanLimits, val: string | boolean) {
     setForm(f => ({ ...f, limits: { ...f.limits, [key]: typeof val === 'boolean' ? val : Number(val) } }));
+  }
+
+  function setPrasannaLimitField(categoryId: string, field: 'dailyLimit' | 'totalLimit' | 'singlePrice', val: string) {
+    setForm(f => {
+      const current = f.limits.prasannaLimits[categoryId] ?? DEFAULT_PRASANNA_LIMIT;
+      return {
+        ...f,
+        limits: {
+          ...f.limits,
+          prasannaLimits: {
+            ...f.limits.prasannaLimits,
+            [categoryId]: { ...current, [field]: Number(val) },
+          },
+        },
+      };
+    });
   }
 
   // Toggle all page access fields at once
@@ -568,6 +606,42 @@ export default function PlansPage() {
                         className="w-20 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-sm text-white text-right flex-shrink-0" />
                     </div>
                   ))}
+                </div>
+              </div>
+
+              {/* ── Prasanna Jothidam Limits (per category) ── */}
+              <div className="border border-white/10 rounded-xl p-4 space-y-3">
+                <p className="text-xs font-semibold text-white/60 uppercase tracking-wider">
+                  Prasanna Jothidam Limits
+                  <span className="ml-2 text-white/30 font-normal normal-case tracking-normal">-1 = unlimited · 0 = blocked · Total resets monthly</span>
+                </p>
+                <div className="space-y-2">
+                  {PRASANNA_CATEGORIES.map(({ id, label }) => {
+                    const v = form.limits.prasannaLimits[id] ?? DEFAULT_PRASANNA_LIMIT;
+                    return (
+                      <div key={id} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center">
+                        <span className="text-sm text-white/70 truncate">{label}</span>
+                        <div>
+                          <label className="text-[10px] text-white/30 block text-center">Daily</label>
+                          <input type="number" value={v.dailyLimit}
+                            onChange={e => setPrasannaLimitField(id, 'dailyLimit', e.target.value)}
+                            className="w-16 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-sm text-white text-right" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-white/30 block text-center">Total/mo</label>
+                          <input type="number" value={v.totalLimit}
+                            onChange={e => setPrasannaLimitField(id, 'totalLimit', e.target.value)}
+                            className="w-16 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-sm text-white text-right" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-white/30 block text-center">₹/extra</label>
+                          <input type="number" value={v.singlePrice}
+                            onChange={e => setPrasannaLimitField(id, 'singlePrice', e.target.value)}
+                            className="w-16 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-sm text-white text-right" />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
