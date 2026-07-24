@@ -14,6 +14,7 @@ const GUEST_GATES = [
   { key: 'horai',                    label: 'Nalla Neram / Horai' },
   { key: 'remedies',                 label: 'Remedies' },
   { key: 'appointments',             label: 'Appointments' },
+  { key: 'prasannaJothidam',         label: 'Prasanna Jothidam' },
 ];
 
 export default function GuestAccessSettingsPage() {
