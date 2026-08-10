@@ -24,6 +24,7 @@ interface PlanLimits {
   // Other
   accessPdfDownload: boolean; accessReminders: boolean; accessAiFeatures: boolean;
   accessPrasannaJothidam: boolean;
+  accessNumerology: boolean;
   // Counts
   jathagamCount: number; basicPoruthamCount: number; advancedPoruthamCount: number;
   muhurtamSearchCount: number; rasiBalanSearchCount: number;
@@ -32,6 +33,9 @@ interface PlanLimits {
   // Per-Prasanna-category limits, keyed by category id. Missing entries =
   // fully unlimited (see astro-BE prasanna-limit.service.ts).
   prasannaLimits: Record<string, { dailyLimit: number; totalLimit: number; singlePrice: number }>;
+  // Same shape, keyed by numerology report type ('profile', 'compatibility',
+  // or a category id like 'vehicle'). Missing entries = fully unlimited.
+  numerologyLimits: Record<string, { dailyLimit: number; totalLimit: number; singlePrice: number }>;
 }
 
 interface Plan {
@@ -101,6 +105,13 @@ const ACCESS_SECTIONS: Section[] = [
       { key: 'accessPrasannaJothidam', label: 'Prasanna Jothidam module', bool: true },
     ],
   },
+  {
+    title: 'Numerology',
+    icon: '🔮',
+    fields: [
+      { key: 'accessNumerology', label: 'Numerology module', bool: true },
+    ],
+  },
 ];
 
 // Flat list for "Enable All / Disable All" and card display
@@ -137,6 +148,27 @@ const PRASANNA_CATEGORIES: { id: string; label: string }[] = [
 
 const DEFAULT_PRASANNA_LIMIT = { dailyLimit: -1, totalLimit: -1, singlePrice: 0 };
 
+// Mirrors astro-mob's Numerology manifest and astro-BE's numerology.service.ts
+// — 'profile' and 'compatibility' are the core reports, the rest are the
+// category number-checks shipped this pass (see the numerology plan).
+const NUMEROLOGY_REPORT_TYPES: { id: string; label: string }[] = [
+  { id: 'profile',       label: '📋 Profile Report' },
+  { id: 'compatibility', label: '💞 Compatibility' },
+  { id: 'marriage',      label: '💍 Marriage' },
+  { id: 'wealth',        label: '💰 Wealth' },
+  { id: 'lottery',       label: '🎟️ Lottery/Lucky Number' },
+  { id: 'vehicle',       label: '🚗 Vehicle Number' },
+  { id: 'property',      label: '🏠 Property' },
+  { id: 'babyName',      label: '👶 Baby Name' },
+  { id: 'business',      label: '🏢 Business' },
+  { id: 'mobile',        label: '📱 Mobile Number' },
+  { id: 'career',        label: '💼 Career' },
+  { id: 'love',          label: '❤️ Love' },
+  { id: 'luckyDate',     label: '📅 Lucky Date' },
+];
+
+const DEFAULT_NUMEROLOGY_LIMIT = { dailyLimit: -1, totalLimit: -1, singlePrice: 0 };
+
 const DEFAULT_LIMITS: PlanLimits = {
   // Jathagam
   accessJathagam: true, accessJathagamCreate: false, accessJathagamDetail: true, accessKocharamCompare: false,
@@ -149,12 +181,14 @@ const DEFAULT_LIMITS: PlanLimits = {
   // Other
   accessPdfDownload: false, accessReminders: false, accessAiFeatures: false,
   accessPrasannaJothidam: false,
+  accessNumerology: false,
   // Counts
   jathagamCount: 0, basicPoruthamCount: 0, advancedPoruthamCount: 0,
   muhurtamSearchCount: 0, rasiBalanSearchCount: 0,
   reminderCount: 0, pdfDownloadCount: 0, aiTokensCount: 0,
   advancedMatching: false,
   prasannaLimits: {},
+  numerologyLimits: {},
 };
 
 const EMPTY: Omit<Plan, '_id'> = {
@@ -292,6 +326,22 @@ export default function PlansPage() {
           prasannaLimits: {
             ...f.limits.prasannaLimits,
             [categoryId]: { ...current, [field]: Number(val) },
+          },
+        },
+      };
+    });
+  }
+
+  function setNumerologyLimitField(reportType: string, field: 'dailyLimit' | 'totalLimit' | 'singlePrice', val: string) {
+    setForm(f => {
+      const current = f.limits.numerologyLimits[reportType] ?? DEFAULT_NUMEROLOGY_LIMIT;
+      return {
+        ...f,
+        limits: {
+          ...f.limits,
+          numerologyLimits: {
+            ...f.limits.numerologyLimits,
+            [reportType]: { ...current, [field]: Number(val) },
           },
         },
       };
@@ -637,6 +687,42 @@ export default function PlansPage() {
                           <label className="text-[10px] text-white/30 block text-center">₹/extra</label>
                           <input type="number" value={v.singlePrice}
                             onChange={e => setPrasannaLimitField(id, 'singlePrice', e.target.value)}
+                            className="w-16 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-sm text-white text-right" />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* ── Numerology Limits (per report type) ── */}
+              <div className="border border-white/10 rounded-xl p-4 space-y-3">
+                <p className="text-xs font-semibold text-white/60 uppercase tracking-wider">
+                  Numerology Limits
+                  <span className="ml-2 text-white/30 font-normal normal-case tracking-normal">-1 = unlimited · 0 = blocked · Total resets monthly</span>
+                </p>
+                <div className="space-y-2">
+                  {NUMEROLOGY_REPORT_TYPES.map(({ id, label }) => {
+                    const v = form.limits.numerologyLimits[id] ?? DEFAULT_NUMEROLOGY_LIMIT;
+                    return (
+                      <div key={id} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center">
+                        <span className="text-sm text-white/70 truncate">{label}</span>
+                        <div>
+                          <label className="text-[10px] text-white/30 block text-center">Daily</label>
+                          <input type="number" value={v.dailyLimit}
+                            onChange={e => setNumerologyLimitField(id, 'dailyLimit', e.target.value)}
+                            className="w-16 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-sm text-white text-right" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-white/30 block text-center">Total/mo</label>
+                          <input type="number" value={v.totalLimit}
+                            onChange={e => setNumerologyLimitField(id, 'totalLimit', e.target.value)}
+                            className="w-16 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-sm text-white text-right" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-white/30 block text-center">₹/extra</label>
+                          <input type="number" value={v.singlePrice}
+                            onChange={e => setNumerologyLimitField(id, 'singlePrice', e.target.value)}
                             className="w-16 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-sm text-white text-right" />
                         </div>
                       </div>
