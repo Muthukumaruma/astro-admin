@@ -38,12 +38,26 @@ interface PlanLimits {
   numerologyLimits: Record<string, { dailyLimit: number; totalLimit: number; singlePrice: number }>;
 }
 
+// Per-country override of every price field below — an admin only needs to
+// fill in the fields that should actually differ for that country; anything
+// left unset falls back to the plan's default (no automatic FX conversion,
+// see astro-BE's plan-pricing.util.ts).
+interface CountryPriceOverride {
+  price?: number;
+  currency?: string;
+  singleJathagamPrice?: number;
+  singlePoruthamPrice?: number;
+  prasannaLimits?: Record<string, { singlePrice: number }>;
+  numerologyLimits?: Record<string, { singlePrice: number }>;
+}
+
 interface Plan {
   _id: string; slug: string; name: string; description: string;
-  price: number; currency: string; isFree: boolean; isActive: boolean;
+  price: number; currency: string; isFree: boolean; isActive: boolean; isPopular: boolean;
   sortOrder: number; limits: PlanLimits;
   yearlyEnabled: boolean; yearlyDiscountPercent: number;
   singleJathagamPrice?: number; singlePoruthamPrice?: number;
+  countryPricing?: Record<string, CountryPriceOverride>;
 }
 
 // ─── Field definitions ────────────────────────────────────────────────────────
@@ -169,6 +183,29 @@ const NUMEROLOGY_REPORT_TYPES: { id: string; label: string }[] = [
 
 const DEFAULT_NUMEROLOGY_LIMIT = { dailyLimit: -1, totalLimit: -1, singlePrice: 0 };
 
+// Curated list of likely target countries for regional pricing — an admin
+// can only add a country from this list; expand it as new markets are
+// targeted. ISO 3166-1 alpha-2 codes, matching astro-BE's countryPricing key.
+const COUNTRY_OPTIONS: { code: string; name: string }[] = [
+  { code: 'US', name: 'United States' }, { code: 'GB', name: 'United Kingdom' },
+  { code: 'CA', name: 'Canada' }, { code: 'AU', name: 'Australia' },
+  { code: 'SG', name: 'Singapore' }, { code: 'AE', name: 'UAE' },
+  { code: 'MY', name: 'Malaysia' }, { code: 'NZ', name: 'New Zealand' },
+  { code: 'DE', name: 'Germany' }, { code: 'FR', name: 'France' },
+  { code: 'NL', name: 'Netherlands' }, { code: 'IE', name: 'Ireland' },
+  { code: 'SA', name: 'Saudi Arabia' }, { code: 'QA', name: 'Qatar' },
+  { code: 'KW', name: 'Kuwait' }, { code: 'ZA', name: 'South Africa' },
+  { code: 'LK', name: 'Sri Lanka' }, { code: 'NP', name: 'Nepal' },
+  { code: 'BD', name: 'Bangladesh' }, { code: 'MU', name: 'Mauritius' },
+];
+
+const CURRENCY_OPTIONS = ['INR', 'USD', 'EUR', 'GBP', 'AUD', 'CAD', 'SGD', 'AED'];
+
+const EMPTY_COUNTRY_OVERRIDE: CountryPriceOverride = {
+  price: 0, currency: 'USD', singleJathagamPrice: 0, singlePoruthamPrice: 0,
+  prasannaLimits: {}, numerologyLimits: {},
+};
+
 const DEFAULT_LIMITS: PlanLimits = {
   // Jathagam
   accessJathagam: true, accessJathagamCreate: false, accessJathagamDetail: true, accessKocharamCompare: false,
@@ -193,10 +230,11 @@ const DEFAULT_LIMITS: PlanLimits = {
 
 const EMPTY: Omit<Plan, '_id'> = {
   slug: '', name: '', description: '', price: 0, currency: 'INR',
-  isFree: false, isActive: true, sortOrder: 0,
+  isFree: false, isActive: true, isPopular: false, sortOrder: 0,
   yearlyEnabled: false, yearlyDiscountPercent: 0,
   limits: { ...DEFAULT_LIMITS },
   singleJathagamPrice: 0, singlePoruthamPrice: 0,
+  countryPricing: {},
 };
 
 // ─── Display helpers ──────────────────────────────────────────────────────────
@@ -227,7 +265,9 @@ export default function PlansPage() {
 
   const { data: plans = [], isLoading } = useQuery<Plan[]>({
     queryKey: ['admin-plans'],
-    queryFn: () => axios.get(`${API}/plans`, { headers: authHeaders() })
+    // /plans/admin (not the public /plans) — returns the raw countryPricing
+    // override map so this edit form has the full data to work with.
+    queryFn: () => axios.get(`${API}/plans/admin`, { headers: authHeaders() })
       .then(r => (r.data.data ?? []).sort((a: Plan, b: Plan) => a.sortOrder - b.sortOrder)),
   });
 
@@ -264,6 +304,8 @@ export default function PlansPage() {
 
   const [saveError, setSaveError] = useState('');
   const [saveVerify, setSaveVerify] = useState('');
+  const [countryToAdd, setCountryToAdd] = useState('');
+  const [expandedCountry, setExpandedCountry] = useState<string | null>(null);
 
   const save = useMutation({
     mutationFn: async (data: Partial<Plan> & { _id?: string }) => {
@@ -309,7 +351,7 @@ export default function PlansPage() {
   });
 
   function openCreate() { setEditId(null); setForm({ ...EMPTY, limits: { ...DEFAULT_LIMITS } }); setApplyMode('new_only'); setSaveError(''); setOpen(true); }
-  function openEdit(p: Plan) { setEditId(p._id); setForm({ ...p, limits: { ...DEFAULT_LIMITS, ...p.limits } }); setApplyMode('new_only'); setSaveError(''); setOpen(true); }
+  function openEdit(p: Plan) { setEditId(p._id); setForm({ ...p, limits: { ...DEFAULT_LIMITS, ...p.limits }, countryPricing: p.countryPricing ?? {} }); setApplyMode('new_only'); setSaveError(''); setOpen(true); }
   function closeForm() { setOpen(false); setEditId(null); }
 
   function setLimitField(key: keyof PlanLimits, val: string | boolean) {
@@ -342,6 +384,51 @@ export default function PlansPage() {
           numerologyLimits: {
             ...f.limits.numerologyLimits,
             [reportType]: { ...current, [field]: Number(val) },
+          },
+        },
+      };
+    });
+  }
+
+  // ── Country pricing overrides ──────────────────────────────────────────────
+
+  function addCountryOverride(code: string) {
+    setForm(f => ({
+      ...f,
+      countryPricing: { ...f.countryPricing, [code]: { ...EMPTY_COUNTRY_OVERRIDE } },
+    }));
+  }
+
+  function removeCountryOverride(code: string) {
+    setForm(f => {
+      const next = { ...f.countryPricing };
+      delete next[code];
+      return { ...f, countryPricing: next };
+    });
+  }
+
+  function setCountryField(code: string, field: keyof CountryPriceOverride, val: string) {
+    setForm(f => ({
+      ...f,
+      countryPricing: {
+        ...f.countryPricing,
+        [code]: { ...f.countryPricing?.[code], [field]: field === 'currency' ? val : Number(val) },
+      },
+    }));
+  }
+
+  function setCountryCategoryPrice(
+    code: string, kind: 'prasannaLimits' | 'numerologyLimits', categoryId: string, val: string,
+  ) {
+    setForm(f => {
+      const current = f.countryPricing?.[code] ?? { ...EMPTY_COUNTRY_OVERRIDE };
+      return {
+        ...f,
+        countryPricing: {
+          ...f.countryPricing,
+          [code]: {
+            ...current,
+            [kind]: { ...current[kind], [categoryId]: { singlePrice: Number(val) } },
           },
         },
       };
@@ -387,10 +474,10 @@ export default function PlansPage() {
                       <div ref={drag.innerRef} {...drag.draggableProps}
                         style={{ ...drag.draggableProps.style, opacity: snapshot.isDragging ? 0.85 : 1 }}>
                         <div className={`relative bg-white/5 border rounded-2xl p-5 space-y-4 ${
-                          plan.slug === 'pro' ? 'border-indigo-500/50 ring-1 ring-indigo-500/20' :
+                          plan.isPopular ? 'border-indigo-500/50 ring-1 ring-indigo-500/20' :
                           plan.isActive ? 'border-white/10' : 'border-red-500/20 opacity-50'
                         }`}>
-                          {plan.slug === 'pro' && (
+                          {plan.isPopular && (
                             <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                               <span className="bg-indigo-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider whitespace-nowrap">
                                 ⭐ Most Popular
@@ -558,12 +645,20 @@ export default function PlansPage() {
                 )}
               </div>
 
-              <label className="flex items-center gap-2 cursor-pointer text-sm text-white/60 select-none">
-                <input type="checkbox" checked={form.isFree}
-                  onChange={e => setForm(f => ({ ...f, isFree: e.target.checked }))}
-                  className="accent-indigo-500 w-4 h-4" />
-                Free plan
-              </label>
+              <div className="flex items-center gap-5">
+                <label className="flex items-center gap-2 cursor-pointer text-sm text-white/60 select-none">
+                  <input type="checkbox" checked={form.isFree}
+                    onChange={e => setForm(f => ({ ...f, isFree: e.target.checked }))}
+                    className="accent-indigo-500 w-4 h-4" />
+                  Free plan
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer text-sm text-white/60 select-none">
+                  <input type="checkbox" checked={form.isPopular}
+                    onChange={e => setForm(f => ({ ...f, isPopular: e.target.checked }))}
+                    className="accent-indigo-500 w-4 h-4" />
+                  ⭐ Most Popular
+                </label>
+              </div>
 
               {/* ── Pay-per-item pricing (one-off purchases beyond the plan limit) ── */}
               <div className="grid grid-cols-2 gap-3">
@@ -728,6 +823,141 @@ export default function PlansPage() {
                       </div>
                     );
                   })}
+                </div>
+              </div>
+
+              {/* ── Country Pricing (per-country price + currency overrides) ── */}
+              <div className="border border-white/10 rounded-xl p-4 space-y-3">
+                <p className="text-xs font-semibold text-white/60 uppercase tracking-wider">
+                  Country Pricing
+                  <span className="ml-2 text-white/30 font-normal normal-case tracking-normal">
+                    No auto-conversion — fill in every price for a country you add
+                  </span>
+                </p>
+
+                <div className="flex gap-2">
+                  <select value={countryToAdd} onChange={e => setCountryToAdd(e.target.value)}
+                    className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white">
+                    <option value="">Select a country…</option>
+                    {COUNTRY_OPTIONS.filter(c => !form.countryPricing?.[c.code]).map(c => (
+                      <option key={c.code} value={c.code}>{c.name} ({c.code})</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => { if (countryToAdd) { addCountryOverride(countryToAdd); setExpandedCountry(countryToAdd); setCountryToAdd(''); } }}
+                    disabled={!countryToAdd}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-lg text-sm font-medium transition-colors">
+                    + Add Country
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  {Object.entries(form.countryPricing ?? {}).map(([code, override]) => {
+                    const countryName = COUNTRY_OPTIONS.find(c => c.code === code)?.name ?? code;
+                    const isExpanded = expandedCountry === code;
+                    return (
+                      <div key={code} className="border border-white/10 rounded-xl overflow-hidden">
+                        <div
+                          className="flex items-center justify-between px-3 py-2.5 bg-white/[0.06] cursor-pointer"
+                          onClick={() => setExpandedCountry(isExpanded ? null : code)}
+                        >
+                          <span className="text-sm font-semibold text-white/80">
+                            {countryName} <span className="text-white/30 font-mono text-xs">({code})</span>
+                            {override.price !== undefined && override.currency && (
+                              <span className="ml-2 text-emerald-400 text-xs font-mono">
+                                {override.currency} {override.price}/mo
+                              </span>
+                            )}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); removeCountryOverride(code); }}
+                              className="text-[11px] font-medium text-red-400 bg-red-400/10 hover:bg-red-400/20 px-2 py-0.5 rounded transition-colors">
+                              Remove
+                            </button>
+                            <span className="text-white/40 text-xs">{isExpanded ? '▲' : '▼'}</span>
+                          </div>
+                        </div>
+
+                        {isExpanded && (
+                          <div className="p-3 space-y-3">
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="text-xs text-white/50 block mb-1">Currency</label>
+                                <select value={override.currency ?? 'USD'}
+                                  onChange={e => setCountryField(code, 'currency', e.target.value)}
+                                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white">
+                                  {CURRENCY_OPTIONS.map(cur => <option key={cur} value={cur}>{cur}</option>)}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="text-xs text-white/50 block mb-1">Monthly Price</label>
+                                <input type="number" value={override.price ?? 0}
+                                  onChange={e => setCountryField(code, 'price', e.target.value)}
+                                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white" />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="text-xs text-white/50 block mb-1">Single Jathagam Price</label>
+                                <input type="number" value={override.singleJathagamPrice ?? 0}
+                                  onChange={e => setCountryField(code, 'singleJathagamPrice', e.target.value)}
+                                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white" />
+                              </div>
+                              <div>
+                                <label className="text-xs text-white/50 block mb-1">Single Porutham Price</label>
+                                <input type="number" value={override.singlePoruthamPrice ?? 0}
+                                  onChange={e => setCountryField(code, 'singlePoruthamPrice', e.target.value)}
+                                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white" />
+                              </div>
+                            </div>
+
+                            {/* Optional per-category price overrides for this country */}
+                            <details className="pt-1">
+                              <summary className="text-xs text-white/50 cursor-pointer select-none">
+                                Advanced: per-category prices for {countryName} (optional — inherits default currency's number if left blank)
+                              </summary>
+                              <div className="mt-2 space-y-3">
+                                <div>
+                                  <p className="text-[11px] font-semibold text-white/40 uppercase tracking-wider mb-1">Prasanna Jothidam</p>
+                                  <div className="space-y-1.5">
+                                    {PRASANNA_CATEGORIES.map(({ id, label }) => (
+                                      <div key={id} className="grid grid-cols-[1fr_auto] gap-2 items-center">
+                                        <span className="text-xs text-white/60 truncate">{label}</span>
+                                        <input type="number"
+                                          value={override.prasannaLimits?.[id]?.singlePrice ?? ''}
+                                          placeholder="—"
+                                          onChange={e => setCountryCategoryPrice(code, 'prasannaLimits', id, e.target.value)}
+                                          className="w-20 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white text-right" />
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                                <div>
+                                  <p className="text-[11px] font-semibold text-white/40 uppercase tracking-wider mb-1">Numerology</p>
+                                  <div className="space-y-1.5">
+                                    {NUMEROLOGY_REPORT_TYPES.map(({ id, label }) => (
+                                      <div key={id} className="grid grid-cols-[1fr_auto] gap-2 items-center">
+                                        <span className="text-xs text-white/60 truncate">{label}</span>
+                                        <input type="number"
+                                          value={override.numerologyLimits?.[id]?.singlePrice ?? ''}
+                                          placeholder="—"
+                                          onChange={e => setCountryCategoryPrice(code, 'numerologyLimits', id, e.target.value)}
+                                          className="w-20 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white text-right" />
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            </details>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {Object.keys(form.countryPricing ?? {}).length === 0 && (
+                    <p className="text-xs text-white/30 italic">No country overrides — everyone pays the default price above.</p>
+                  )}
                 </div>
               </div>
 
