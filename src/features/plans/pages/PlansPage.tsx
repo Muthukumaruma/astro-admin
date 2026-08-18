@@ -255,6 +255,18 @@ function CountChip({ v }: { v: number }) {
 
 type ApplyMode = 'new_only' | 'all';
 
+// The edit form used to be one long scroll through every setting at once —
+// split into tabs grouped by what an admin is actually trying to do (set
+// basic details vs. gate screens vs. price a category vs. price a country),
+// so each visit only shows what's relevant instead of everything at once.
+const TABS = [
+  { id: 'details',   label: 'Details',          icon: '📝' },
+  { id: 'access',     label: 'Access & Limits',  icon: '🔓' },
+  { id: 'pricing',    label: 'Category Pricing', icon: '💵' },
+  { id: 'countries',  label: 'Countries',        icon: '🌍' },
+] as const;
+type TabId = typeof TABS[number]['id'];
+
 export default function PlansPage() {
   const qc = useQueryClient();
   const [form, setForm] = useState<Omit<Plan, '_id'>>(EMPTY);
@@ -306,6 +318,7 @@ export default function PlansPage() {
   const [saveVerify, setSaveVerify] = useState('');
   const [countryToAdd, setCountryToAdd] = useState('');
   const [expandedCountry, setExpandedCountry] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<TabId>('details');
 
   const save = useMutation({
     mutationFn: async (data: Partial<Plan> & { _id?: string }) => {
@@ -350,8 +363,8 @@ export default function PlansPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-plans'] }),
   });
 
-  function openCreate() { setEditId(null); setForm({ ...EMPTY, limits: { ...DEFAULT_LIMITS } }); setApplyMode('new_only'); setSaveError(''); setOpen(true); }
-  function openEdit(p: Plan) { setEditId(p._id); setForm({ ...p, limits: { ...DEFAULT_LIMITS, ...p.limits }, countryPricing: p.countryPricing ?? {} }); setApplyMode('new_only'); setSaveError(''); setOpen(true); }
+  function openCreate() { setEditId(null); setForm({ ...EMPTY, limits: { ...DEFAULT_LIMITS } }); setApplyMode('new_only'); setSaveError(''); setActiveTab('details'); setOpen(true); }
+  function openEdit(p: Plan) { setEditId(p._id); setForm({ ...p, limits: { ...DEFAULT_LIMITS, ...p.limits }, countryPricing: p.countryPricing ?? {} }); setApplyMode('new_only'); setSaveError(''); setActiveTab('details'); setOpen(true); }
   function closeForm() { setOpen(false); setEditId(null); }
 
   function setLimitField(key: keyof PlanLimits, val: string | boolean) {
@@ -572,8 +585,26 @@ export default function PlansPage() {
               <button onClick={closeForm} className="text-white/40 hover:text-white text-xl leading-none w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors">✕</button>
             </div>
 
+            {/* Tab bar — pinned, doesn't scroll with the content below it */}
+            <div className="flex-shrink-0 flex gap-1 px-4 md:px-6 pt-3 border-b border-white/10 overflow-x-auto">
+              {TABS.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors whitespace-nowrap ${
+                    activeTab === tab.id
+                      ? 'text-white border-indigo-500 bg-white/5'
+                      : 'text-white/40 border-transparent hover:text-white/70'
+                  }`}
+                >
+                  <span>{tab.icon}</span> {tab.label}
+                </button>
+              ))}
+            </div>
+
             {/* Scrollable body */}
             <div className="overflow-y-auto flex-1 px-4 md:px-6 py-4 space-y-4">
+              {activeTab === 'details' && (<>
               {/* Basic info */}
               <div className="grid grid-cols-2 gap-3">
                 {[
@@ -676,6 +707,9 @@ export default function PlansPage() {
                 </div>
               </div>
 
+              </>)}
+
+              {activeTab === 'access' && (<>
               {/* ── Screen Access (grouped by section) ── */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -754,6 +788,9 @@ export default function PlansPage() {
                 </div>
               </div>
 
+              </>)}
+
+              {activeTab === 'pricing' && (<>
               {/* ── Prasanna Jothidam Limits (per category) ── */}
               <div className="border border-white/10 rounded-xl p-4 space-y-3">
                 <p className="text-xs font-semibold text-white/60 uppercase tracking-wider">
@@ -826,6 +863,9 @@ export default function PlansPage() {
                 </div>
               </div>
 
+              </>)}
+
+              {activeTab === 'countries' && (<>
               {/* ── Country Pricing (per-country price + currency overrides) ── */}
               <div className="border border-white/10 rounded-xl p-4 space-y-3">
                 <p className="text-xs font-semibold text-white/60 uppercase tracking-wider">
@@ -960,6 +1000,8 @@ export default function PlansPage() {
                   )}
                 </div>
               </div>
+
+              </>)}
 
               {/* ── Apply Mode (only shown when editing existing plan) ── */}
               {editId && (
