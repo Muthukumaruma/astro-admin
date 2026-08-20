@@ -25,6 +25,7 @@ interface PlanLimits {
   accessPdfDownload: boolean; accessReminders: boolean; accessAiFeatures: boolean;
   accessPrasannaJothidam: boolean;
   accessNumerology: boolean;
+  accessKaiRekhai: boolean;
   // Counts
   jathagamCount: number; basicPoruthamCount: number; advancedPoruthamCount: number;
   muhurtamSearchCount: number; rasiBalanSearchCount: number;
@@ -36,6 +37,8 @@ interface PlanLimits {
   // Same shape, keyed by numerology report type ('profile', 'compatibility',
   // or a category id like 'vehicle'). Missing entries = fully unlimited.
   numerologyLimits: Record<string, { dailyLimit: number; totalLimit: number; singlePrice: number }>;
+  // Same shape again — Kai Rekhai has a single fixed 'reading' key today.
+  kaiRekhaiLimits: Record<string, { dailyLimit: number; totalLimit: number; singlePrice: number }>;
 }
 
 // Per-country override of every price field below — an admin only needs to
@@ -49,6 +52,7 @@ interface CountryPriceOverride {
   singlePoruthamPrice?: number;
   prasannaLimits?: Record<string, { singlePrice: number }>;
   numerologyLimits?: Record<string, { singlePrice: number }>;
+  kaiRekhaiLimits?: Record<string, { singlePrice: number }>;
 }
 
 interface Plan {
@@ -126,6 +130,13 @@ const ACCESS_SECTIONS: Section[] = [
       { key: 'accessNumerology', label: 'Numerology module', bool: true },
     ],
   },
+  {
+    title: 'Kai Rekhai Jothidam',
+    icon: '🖐️',
+    fields: [
+      { key: 'accessKaiRekhai', label: 'Kai Rekhai (Palmistry) module — off until you\'re ready to launch it', bool: true },
+    ],
+  },
 ];
 
 // Flat list for "Enable All / Disable All" and card display
@@ -183,6 +194,14 @@ const NUMEROLOGY_REPORT_TYPES: { id: string; label: string }[] = [
 
 const DEFAULT_NUMEROLOGY_LIMIT = { dailyLimit: -1, totalLimit: -1, singlePrice: 0 };
 
+// Single report type for v1 — a photo → one reading. Kept as a list (not a
+// hardcoded string) so a future 'leftHand'/'rightHand' split is just another row.
+const KAI_REKHAI_REPORT_TYPES: { id: string; label: string }[] = [
+  { id: 'reading', label: '🖐️ Palm Reading' },
+];
+
+const DEFAULT_KAI_REKHAI_LIMIT = { dailyLimit: -1, totalLimit: -1, singlePrice: 0 };
+
 // Curated list of likely target countries for regional pricing — an admin
 // can only add a country from this list; expand it as new markets are
 // targeted. ISO 3166-1 alpha-2 codes, matching astro-BE's countryPricing key.
@@ -203,7 +222,7 @@ const CURRENCY_OPTIONS = ['INR', 'USD', 'EUR', 'GBP', 'AUD', 'CAD', 'SGD', 'AED'
 
 const EMPTY_COUNTRY_OVERRIDE: CountryPriceOverride = {
   price: 0, currency: 'USD', singleJathagamPrice: 0, singlePoruthamPrice: 0,
-  prasannaLimits: {}, numerologyLimits: {},
+  prasannaLimits: {}, numerologyLimits: {}, kaiRekhaiLimits: {},
 };
 
 const DEFAULT_LIMITS: PlanLimits = {
@@ -219,6 +238,7 @@ const DEFAULT_LIMITS: PlanLimits = {
   accessPdfDownload: false, accessReminders: false, accessAiFeatures: false,
   accessPrasannaJothidam: false,
   accessNumerology: false,
+  accessKaiRekhai: false,
   // Counts
   jathagamCount: 0, basicPoruthamCount: 0, advancedPoruthamCount: 0,
   muhurtamSearchCount: 0, rasiBalanSearchCount: 0,
@@ -226,6 +246,7 @@ const DEFAULT_LIMITS: PlanLimits = {
   advancedMatching: false,
   prasannaLimits: {},
   numerologyLimits: {},
+  kaiRekhaiLimits: {},
 };
 
 const EMPTY: Omit<Plan, '_id'> = {
@@ -403,6 +424,22 @@ export default function PlansPage() {
     });
   }
 
+  function setKaiRekhaiLimitField(reportType: string, field: 'dailyLimit' | 'totalLimit' | 'singlePrice', val: string) {
+    setForm(f => {
+      const current = f.limits.kaiRekhaiLimits[reportType] ?? DEFAULT_KAI_REKHAI_LIMIT;
+      return {
+        ...f,
+        limits: {
+          ...f.limits,
+          kaiRekhaiLimits: {
+            ...f.limits.kaiRekhaiLimits,
+            [reportType]: { ...current, [field]: Number(val) },
+          },
+        },
+      };
+    });
+  }
+
   // ── Country pricing overrides ──────────────────────────────────────────────
 
   function addCountryOverride(code: string) {
@@ -431,7 +468,7 @@ export default function PlansPage() {
   }
 
   function setCountryCategoryPrice(
-    code: string, kind: 'prasannaLimits' | 'numerologyLimits', categoryId: string, val: string,
+    code: string, kind: 'prasannaLimits' | 'numerologyLimits' | 'kaiRekhaiLimits', categoryId: string, val: string,
   ) {
     setForm(f => {
       const current = f.countryPricing?.[code] ?? { ...EMPTY_COUNTRY_OVERRIDE };
@@ -863,6 +900,42 @@ export default function PlansPage() {
                 </div>
               </div>
 
+              {/* ── Kai Rekhai Jothidam Limits ── */}
+              <div className="border border-white/10 rounded-xl p-4 space-y-3">
+                <p className="text-xs font-semibold text-white/60 uppercase tracking-wider">
+                  Kai Rekhai Jothidam Limits
+                  <span className="ml-2 text-white/30 font-normal normal-case tracking-normal">-1 = unlimited · 0 = blocked · Total resets monthly</span>
+                </p>
+                <div className="space-y-2">
+                  {KAI_REKHAI_REPORT_TYPES.map(({ id, label }) => {
+                    const v = form.limits.kaiRekhaiLimits[id] ?? DEFAULT_KAI_REKHAI_LIMIT;
+                    return (
+                      <div key={id} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center">
+                        <span className="text-sm text-white/70 truncate">{label}</span>
+                        <div>
+                          <label className="text-[10px] text-white/30 block text-center">Daily</label>
+                          <input type="number" value={v.dailyLimit}
+                            onChange={e => setKaiRekhaiLimitField(id, 'dailyLimit', e.target.value)}
+                            className="w-16 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-sm text-white text-right" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-white/30 block text-center">Total/mo</label>
+                          <input type="number" value={v.totalLimit}
+                            onChange={e => setKaiRekhaiLimitField(id, 'totalLimit', e.target.value)}
+                            className="w-16 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-sm text-white text-right" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-white/30 block text-center">₹/extra</label>
+                          <input type="number" value={v.singlePrice}
+                            onChange={e => setKaiRekhaiLimitField(id, 'singlePrice', e.target.value)}
+                            className="w-16 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-sm text-white text-right" />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
               </>)}
 
               {activeTab === 'countries' && (<>
@@ -983,6 +1056,21 @@ export default function PlansPage() {
                                           value={override.numerologyLimits?.[id]?.singlePrice ?? ''}
                                           placeholder="—"
                                           onChange={e => setCountryCategoryPrice(code, 'numerologyLimits', id, e.target.value)}
+                                          className="w-20 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white text-right" />
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                                <div>
+                                  <p className="text-[11px] font-semibold text-white/40 uppercase tracking-wider mb-1">Kai Rekhai Jothidam</p>
+                                  <div className="space-y-1.5">
+                                    {KAI_REKHAI_REPORT_TYPES.map(({ id, label }) => (
+                                      <div key={id} className="grid grid-cols-[1fr_auto] gap-2 items-center">
+                                        <span className="text-xs text-white/60 truncate">{label}</span>
+                                        <input type="number"
+                                          value={override.kaiRekhaiLimits?.[id]?.singlePrice ?? ''}
+                                          placeholder="—"
+                                          onChange={e => setCountryCategoryPrice(code, 'kaiRekhaiLimits', id, e.target.value)}
                                           className="w-20 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white text-right" />
                                       </div>
                                     ))}
