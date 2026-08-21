@@ -20,6 +20,7 @@ const GuestAccessSettingsPage = lazy(() => import('./features/settings/pages/Gue
 const ReferralSettingsPage    = lazy(() => import('./features/settings/pages/ReferralSettingsPage'));
 const AiMarketingSettingsPage = lazy(() => import('./features/settings/pages/AiMarketingSettingsPage'));
 const JothishamKnowledgePage = lazy(() => import('./features/jothisham/pages/JothishamKnowledgePage'));
+const PanchangamDetailsPage = lazy(() => import('./features/panchangam/pages/PanchangamDetailsPage'));
 const CmsCategoriesPage    = lazy(() => import('./features/cms/pages/CmsCategoriesPage'));
 const CmsSubCategoriesPage = lazy(() => import('./features/cms/pages/CmsSubCategoriesPage'));
 const CmsContentListPage   = lazy(() => import('./features/cms/pages/CmsContentListPage'));
@@ -66,6 +67,7 @@ export default function App() {
           <Route path="/settings/ai-marketing"  element={<AiMarketingSettingsPage />} />
           <Route path="/settings" element={<Navigate to="/settings/security" replace />} />
           <Route path="/jothisham-knowledge" element={<JothishamKnowledgePage />} />
+          <Route path="/panchangam-details" element={<PanchangamDetailsPage />} />
           <Route path="/cms/books/categories" element={<CmsCategoriesPage />} />
           <Route path="/cms/books/categories/:categoryId/subcategories" element={<CmsSubCategoriesPage />} />
           <Route path="/cms/books/content" element={<CmsContentListPage />} />

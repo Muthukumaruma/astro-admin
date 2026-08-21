@@ -3,7 +3,7 @@ import { useState } from 'react';
 import {
   LayoutDashboard, Users, Star, CreditCard,
   Sparkles, Settings, LogOut, Shield, Bell, Layers, Megaphone, Menu, X, BookOpen, UserCog, ArrowUpDown,
-  Camera, ArrowUpCircle, Wrench, LogIn, Gift,
+  Camera, ArrowUpCircle, Wrench, LogIn, Gift, Moon,
 } from 'lucide-react';
 import { useAdminAuthStore } from '../../stores/auth.store';
 import type { ReactNode } from 'react';
@@ -33,6 +33,7 @@ const NAV_SECTIONS: NavSection[] = [
     section: 'Content',
     items: [
       { label: 'Jothisham Knowledge', icon: BookOpen, path: '/jothisham-knowledge', permission: 'jothisham' },
+      { label: 'Panchangam Details',  icon: Moon,     path: '/panchangam-details', permission: 'jothisham' },
       { label: 'Books — Categories',  icon: Layers,   path: '/cms/books/categories', permission: 'cms' },
       { label: 'Books — Content',     icon: BookOpen, path: '/cms/books/content',    permission: 'cms' },
       { label: 'Books — Priority',    icon: ArrowUpDown, path: '/cms/books/content/priority', permission: 'cms' },

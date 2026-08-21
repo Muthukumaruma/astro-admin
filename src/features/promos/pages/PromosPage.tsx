@@ -50,7 +50,10 @@ const EMPTY: Omit<Promo, '_id'> = {
 // directly without needing its parent tab/stack as an intermediate step.
 const SCREEN_GROUPS: { group: string; screens: string[] }[] = [
   { group: 'Sign In / Sign Up', screens: ['Login', 'Register', 'ForgotPassword', 'OTPVerify', 'ResetPassword'] },
-  { group: 'Tabs', screens: ['Home', 'Charts', 'MarriageMatching', 'Panchangam', 'Settings'] },
+  // MarriageMatching is no longer a visible bottom tab (moved into the Tools
+  // list, still reachable at this same route name) — "Tools" replaced it in
+  // the tab bar. Keep this in sync with MainTabs.tsx.
+  { group: 'Tabs', screens: ['Home', 'Charts', 'Tools', 'Panchangam', 'Settings'] },
   { group: 'Home', screens: ['Dashboard', 'RasiBalan', 'VeeduBalan', 'NallaNeram', 'Remedies', 'DailyHoroscope', 'BalanHub', 'AI', 'WidgetGuide'] },
   { group: 'Jathagam (Charts)', screens: ['HoroscopeList', 'CreateHoroscope', 'HoroscopeDetail', 'KocharamCompare'] },
   { group: 'Marriage Matching', screens: ['PoruthamList', 'MarriageMatchingHome', 'PoruthamDetail'] },
@@ -58,6 +61,13 @@ const SCREEN_GROUPS: { group: string; screens: string[] }[] = [
   { group: 'Books', screens: ['BooksCategories', 'BooksSubCategories', 'BooksContentList', 'BooksContentDetail', 'BooksBookmarks'] },
   { group: 'Rasi Palan', screens: ['RasiPalanHome', 'RasiPalanDetail'] },
   { group: 'Prasanna Jothidam', screens: ['PrasannaStudio', 'PrasannaQuestion', 'PrasannaSession', 'PrasannaResult', 'PrasannaHistory'] },
+  // Only the param-less entry points are listed (same reasoning as
+  // Numerology below) — Result/Camera need a photo/reading in state that a
+  // promo tap has no way to supply.
+  { group: 'Kai Rekhai Jothidam', screens: ['KaiRekhai', 'KaiRekhaiHistory'] },
+  // NumerologyInput/Result/CategoryCheck all need params a promo can't
+  // supply (name/dob/reading id) — only the hub screen is a safe target.
+  { group: 'Numerology', screens: ['NumerologyHub'] },
   { group: 'Other', screens: ['Subscription', 'PhoneVerify'] },
 ];
 
