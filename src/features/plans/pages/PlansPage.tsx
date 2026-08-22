@@ -38,7 +38,10 @@ interface PlanLimits {
   // or a category id like 'vehicle'). Missing entries = fully unlimited.
   numerologyLimits: Record<string, { dailyLimit: number; totalLimit: number; singlePrice: number }>;
   // Same shape again — Kai Rekhai has a single fixed 'reading' key today.
-  kaiRekhaiLimits: Record<string, { dailyLimit: number; totalLimit: number; singlePrice: number }>;
+  // lifetimeLimit is separate from totalLimit: totalLimit resets every
+  // billing period, lifetimeLimit never resets (counts every reading ever).
+  // Optional/missing = unlimited, same convention as the other count fields.
+  kaiRekhaiLimits: Record<string, { dailyLimit: number; totalLimit: number; lifetimeLimit?: number; singlePrice: number }>;
 }
 
 // Per-country override of every price field below — an admin only needs to
@@ -200,7 +203,7 @@ const KAI_REKHAI_REPORT_TYPES: { id: string; label: string }[] = [
   { id: 'reading', label: '🖐️ Palm Reading' },
 ];
 
-const DEFAULT_KAI_REKHAI_LIMIT = { dailyLimit: -1, totalLimit: -1, singlePrice: 0 };
+const DEFAULT_KAI_REKHAI_LIMIT = { dailyLimit: -1, totalLimit: -1, lifetimeLimit: -1, singlePrice: 0 };
 
 // Curated list of likely target countries for regional pricing — an admin
 // can only add a country from this list; expand it as new markets are
@@ -424,7 +427,7 @@ export default function PlansPage() {
     });
   }
 
-  function setKaiRekhaiLimitField(reportType: string, field: 'dailyLimit' | 'totalLimit' | 'singlePrice', val: string) {
+  function setKaiRekhaiLimitField(reportType: string, field: 'dailyLimit' | 'totalLimit' | 'lifetimeLimit' | 'singlePrice', val: string) {
     setForm(f => {
       const current = f.limits.kaiRekhaiLimits[reportType] ?? DEFAULT_KAI_REKHAI_LIMIT;
       return {
@@ -904,13 +907,13 @@ export default function PlansPage() {
               <div className="border border-white/10 rounded-xl p-4 space-y-3">
                 <p className="text-xs font-semibold text-white/60 uppercase tracking-wider">
                   Kai Rekhai Jothidam Limits
-                  <span className="ml-2 text-white/30 font-normal normal-case tracking-normal">-1 = unlimited · 0 = blocked · Total resets monthly</span>
+                  <span className="ml-2 text-white/30 font-normal normal-case tracking-normal">-1 = unlimited · 0 = blocked · Total/mo resets monthly · Total (ever) never resets</span>
                 </p>
                 <div className="space-y-2">
                   {KAI_REKHAI_REPORT_TYPES.map(({ id, label }) => {
                     const v = form.limits.kaiRekhaiLimits[id] ?? DEFAULT_KAI_REKHAI_LIMIT;
                     return (
-                      <div key={id} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center">
+                      <div key={id} className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 items-center">
                         <span className="text-sm text-white/70 truncate">{label}</span>
                         <div>
                           <label className="text-[10px] text-white/30 block text-center">Daily</label>
@@ -922,6 +925,12 @@ export default function PlansPage() {
                           <label className="text-[10px] text-white/30 block text-center">Total/mo</label>
                           <input type="number" value={v.totalLimit}
                             onChange={e => setKaiRekhaiLimitField(id, 'totalLimit', e.target.value)}
+                            className="w-16 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-sm text-white text-right" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-white/30 block text-center">Total (ever)</label>
+                          <input type="number" value={v.lifetimeLimit ?? -1}
+                            onChange={e => setKaiRekhaiLimitField(id, 'lifetimeLimit', e.target.value)}
                             className="w-16 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-sm text-white text-right" />
                         </div>
                         <div>
