@@ -21,6 +21,7 @@ const PLAN_COLORS: Record<string, string> = {
 };
 
 export default function PaymentsPage() {
+  const [tab, setTab] = useState<'subscriptions' | 'single'>('subscriptions');
   const [page, setPage] = useState(1);
 
   const { data, isLoading } = useQuery({
@@ -30,6 +31,7 @@ export default function PaymentsPage() {
       headers: authHeaders(),
     }).then(r => r.data.data),
     keepPreviousData: true,
+    enabled: tab === 'subscriptions',
   });
 
   const payments = data?.data ?? [];
@@ -43,6 +45,25 @@ export default function PaymentsPage() {
         <p className="text-white/40 text-xs mt-0.5">{total} paid subscriptions</p>
       </div>
 
+      <div className="flex gap-2">
+        <button
+          onClick={() => { setTab('subscriptions'); setPage(1); }}
+          className={`text-sm px-3 py-1.5 rounded-lg font-medium transition-colors ${tab === 'subscriptions' ? 'bg-indigo-500/20 text-indigo-300' : 'bg-white/5 text-white/40 hover:text-white/60'}`}
+        >
+          Subscriptions
+        </button>
+        <button
+          onClick={() => { setTab('single'); setPage(1); }}
+          className={`text-sm px-3 py-1.5 rounded-lg font-medium transition-colors ${tab === 'single' ? 'bg-indigo-500/20 text-indigo-300' : 'bg-white/5 text-white/40 hover:text-white/60'}`}
+        >
+          Single Purchases
+        </button>
+      </div>
+
+      {tab === 'single' ? (
+        <SinglePurchasesTable page={page} setPage={setPage} />
+      ) : (
+      <>
       <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
         {isLoading ? (
           <div className="p-8 text-center text-white/30">Loading…</div>
@@ -121,6 +142,147 @@ export default function PaymentsPage() {
                     </span>
                     <span className="text-white/25 text-[10px]">
                       {new Date(p.currentPeriodEnd).toLocaleDateString('en-IN')} ends
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-white/30 text-xs">Page {page} of {totalPages}</p>
+          <div className="flex gap-2">
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+              className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 disabled:opacity-30 transition-colors">
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+              className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 disabled:opacity-30 transition-colors">
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+      </>
+      )}
+    </div>
+  );
+}
+
+const FEATURE_LABELS: Record<string, string> = {
+  jathagamCount: 'Jathagam',
+  basicPoruthamCount: 'Porutham',
+};
+
+function featureLabel(feature: string): string {
+  if (FEATURE_LABELS[feature]) return FEATURE_LABELS[feature];
+  const [group, id] = feature.split(':');
+  const groupLabels: Record<string, string> = {
+    prasanna: 'Prasanna', numerology: 'Numerology', kaiRekhai: 'Kai Rekhai',
+  };
+  return id ? `${groupLabels[group ?? ''] ?? group} — ${id}` : feature;
+}
+
+function SinglePurchasesTable({ page, setPage }: { page: number; setPage: (fn: (p: number) => number) => void }) {
+  const [search, setSearch] = useState('');
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['admin-single-purchases', page, search],
+    queryFn: () => axios.get(`${API}/admin/single-purchases`, {
+      params: { page, limit: 20, search: search || undefined },
+      headers: authHeaders(),
+    }).then(r => r.data.data),
+    keepPreviousData: true,
+  });
+
+  const purchases  = data?.data ?? [];
+  const total       = data?.total ?? 0;
+  const totalPages  = data?.totalPages ?? 1;
+
+  return (
+    <div className="space-y-4">
+      <input
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        placeholder="Search by name or email…"
+        className="w-full md:w-72 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-indigo-400/50"
+      />
+      <p className="text-white/40 text-xs">{total} single-item purchase(s)</p>
+
+      <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+        {isLoading ? (
+          <div className="p-8 text-center text-white/30">Loading…</div>
+        ) : purchases.length === 0 ? (
+          <div className="py-16 flex flex-col items-center gap-2 text-white/20">
+            <CreditCard className="w-10 h-10" />
+            <p className="text-sm">No single-item purchases yet</p>
+          </div>
+        ) : (
+          <>
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-white/5 text-white/30 text-xs uppercase tracking-wider">
+                    <th className="text-left px-4 py-3 font-medium">User</th>
+                    <th className="text-left px-4 py-3 font-medium">Product</th>
+                    <th className="text-left px-4 py-3 font-medium">Amount</th>
+                    <th className="text-left px-4 py-3 font-medium">Date</th>
+                    <th className="text-left px-4 py-3 font-medium">Payment ID</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {purchases.map((p: any) => (
+                    <tr key={p._id} className="hover:bg-white/3">
+                      <td className="px-4 py-3">
+                        <p className="text-white font-medium">{(p.userId as any)?.name ?? '—'}</p>
+                        <p className="text-white/40 text-xs">{(p.userId as any)?.email ?? p.userId}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 font-medium">
+                          {featureLabel(p.feature)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-white/70 text-xs">
+                        {p.currency} {p.amount}
+                      </td>
+                      <td className="px-4 py-3 text-white/40 text-xs">
+                        {new Date(p.createdAt).toLocaleString('en-IN')}
+                      </td>
+                      <td className="px-4 py-3">
+                        {p.razorpayPaymentId ? (
+                          <a
+                            href={`https://dashboard.razorpay.com/app/payments/${p.razorpayPaymentId}`}
+                            target="_blank" rel="noopener noreferrer"
+                            className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+                          >
+                            {p.razorpayPaymentId.slice(-12)}
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        ) : <span className="text-white/20 text-xs">—</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="md:hidden divide-y divide-white/5">
+              {purchases.map((p: any) => (
+                <div key={p._id} className="p-4 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <p className="text-white text-sm font-medium">{(p.userId as any)?.name ?? '—'}</p>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300">
+                      {featureLabel(p.feature)}
+                    </span>
+                  </div>
+                  <p className="text-white/40 text-xs">{(p.userId as any)?.email}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-white/70 text-xs">{p.currency} {p.amount}</span>
+                    <span className="text-white/25 text-[10px]">
+                      {new Date(p.createdAt).toLocaleDateString('en-IN')}
                     </span>
                   </div>
                 </div>

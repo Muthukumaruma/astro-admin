@@ -163,7 +163,7 @@ export default function SubscriptionsPage() {
       <div>
         <h1 className="text-2xl font-bold text-white">Subscriptions</h1>
         <p className="text-white/40 text-sm mt-1">
-          {data?.total ?? 0} total subscribers
+          {data?.total ?? 0} {hasActiveFilters ? 'subscriber(s) match the current filters' : 'total subscribers'}
         </p>
       </div>
 
