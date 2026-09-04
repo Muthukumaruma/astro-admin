@@ -178,6 +178,7 @@ const FEATURE_LABELS: Record<string, string> = {
 };
 
 function featureLabel(feature: string): string {
+  if (feature === 'legacy:unknown') return 'Unknown product (legacy)';
   if (FEATURE_LABELS[feature]) return FEATURE_LABELS[feature];
   const [group, id] = feature.split(':');
   const groupLabels: Record<string, string> = {
