@@ -14,6 +14,7 @@ interface Stats {
   activePaidSubs: number;
   freeUsers: number;
   estimatedMonthlyRevenue: number;
+  singlePurchaseRevenue: { today: number; week: number; month: number };
   dailySignups: { _id: string; count: number }[];
 }
 
@@ -71,6 +72,24 @@ export default function AdminDashboardPage() {
           <StatCard icon={TrendingUp}label="Est. Monthly Revenue" value={fmtRs(data?.estimatedMonthlyRevenue)} color="bg-emerald-500/30" />
         </div>
       )}
+
+      {/* Single-item purchase revenue */}
+      <div>
+        <h3 className="text-white/50 text-xs font-semibold uppercase tracking-widest mb-3">Single-Item Purchases</h3>
+        {isLoading ? (
+          <div className="grid grid-cols-3 gap-3 md:gap-4">
+            {Array(3).fill(0).map((_, i) => (
+              <div key={i} className="bg-white/5 border border-white/10 rounded-2xl p-5 h-28 animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-3 md:gap-4">
+            <StatCard icon={CreditCard} label="Today"     value={fmtRs(data?.singlePurchaseRevenue?.today)} color="bg-violet-500/30" />
+            <StatCard icon={CreditCard} label="This Week" value={fmtRs(data?.singlePurchaseRevenue?.week)}  color="bg-violet-500/30" />
+            <StatCard icon={CreditCard} label="This Month" value={fmtRs(data?.singlePurchaseRevenue?.month)} color="bg-violet-500/30" />
+          </div>
+        )}
+      </div>
 
       {/* Daily signups chart */}
       <div className="bg-white/5 border border-white/10 rounded-2xl p-4 md:p-6">
